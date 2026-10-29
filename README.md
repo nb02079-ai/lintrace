@@ -19,7 +19,7 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 52개 항목을 점검하
 ## 대상
 
 - Ubuntu Server 22.04 / 24.04 LTS, 웹 서버 1대 (SSH + Nginx/Apache)
-- Python 3.10 이상, 표준 라이브러리만 사용
+- Python 3.6 이상, 표준 라이브러리만 사용 (Ubuntu 18.04 기본 버전까지 지원)
 
 ## 실행
 
