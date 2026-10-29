@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+# 실제 서버에서 나온 결과·증거는 민감 정보가 있으니 올리지 않는다
+output/
+evidence/
+*.tar.gz
+# VM 이미지
+*.ova
+*.vmdk
+*.qcow2

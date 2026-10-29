@@ -1,0 +1,470 @@
+[
+  {
+    "id": "ACC-01",
+    "area": "ACC",
+    "name": "root 외 UID 0 계정 존재",
+    "severity": "critical",
+    "attack": "T1136",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-02",
+    "area": "ACC",
+    "name": "최근 생성된 계정",
+    "severity": "warning",
+    "attack": "T1136.001",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-03",
+    "area": "ACC",
+    "name": "시스템 계정에 로그인 셸 부여",
+    "severity": "warning",
+    "attack": "T1098",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-04",
+    "area": "ACC",
+    "name": "비밀번호가 빈 계정",
+    "severity": "warning",
+    "attack": "T1098",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-05",
+    "area": "ACC",
+    "name": "sudo 그룹 신규 멤버",
+    "severity": "warning",
+    "attack": "T1098",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-06",
+    "area": "ACC",
+    "name": "sudoers의 NOPASSWD 항목",
+    "severity": "warning",
+    "attack": "T1548.003",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-07",
+    "area": "ACC",
+    "name": "authorized_keys 신규 키나 변경",
+    "severity": "critical",
+    "attack": "T1098.004",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-08",
+    "area": "ACC",
+    "name": "로그인 실패 연속 후 성공",
+    "severity": "critical",
+    "attack": "T1110",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-09",
+    "area": "ACC",
+    "name": "평소와 다른 출처·시간대의 SSH 로그인",
+    "severity": "info",
+    "attack": "T1078",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-10",
+    "area": "ACC",
+    "name": "sshd_config 위험 설정",
+    "severity": "info",
+    "attack": "T1098",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "ACC-11",
+    "area": "ACC",
+    "name": "PAM 모듈 변조",
+    "severity": "critical",
+    "attack": "T1556.003",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-01",
+    "area": "PER",
+    "name": "crontab의 의심 명령",
+    "severity": "critical",
+    "attack": "T1053.003",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "PER-02",
+    "area": "PER",
+    "name": "신규 systemd 서비스·타이머",
+    "severity": "warning",
+    "attack": "T1543.002",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-03",
+    "area": "PER",
+    "name": "rc.local, init.d 스크립트 변경",
+    "severity": "warning",
+    "attack": "T1037.004",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-04",
+    "area": "PER",
+    "name": "셸 초기화 파일의 의심 구문",
+    "severity": "warning",
+    "attack": "T1546.004",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-05",
+    "area": "PER",
+    "name": "/etc/ld.so.preload 존재",
+    "severity": "critical",
+    "attack": "T1574.006",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "PER-06",
+    "area": "PER",
+    "name": "at 예약 작업",
+    "severity": "info",
+    "attack": "T1053.002",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-07",
+    "area": "PER",
+    "name": "기본 목록에 없는 커널 모듈",
+    "severity": "warning",
+    "attack": "T1547.006",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-08",
+    "area": "PER",
+    "name": "udev 규칙의 명령 실행",
+    "severity": "warning",
+    "attack": "T1546.017",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PER-09",
+    "area": "PER",
+    "name": "update-motd.d 스크립트 변조",
+    "severity": "warning",
+    "attack": "T1037",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-01",
+    "area": "PRC",
+    "name": "실행 파일이 삭제된 채 도는 프로세스",
+    "severity": "critical",
+    "attack": "T1070.004",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-02",
+    "area": "PRC",
+    "name": "memfd에서 실행 중인 프로세스",
+    "severity": "critical",
+    "attack": "T1620",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-03",
+    "area": "PRC",
+    "name": "임시 디렉터리에서 실행 중인 프로세스",
+    "severity": "critical",
+    "attack": "T1059",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-04",
+    "area": "PRC",
+    "name": "커널 스레드 이름 위장 프로세스",
+    "severity": "critical",
+    "attack": "T1036.004",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-05",
+    "area": "PRC",
+    "name": "ps 결과와 /proc 목록 불일치",
+    "severity": "critical",
+    "attack": "T1014",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-06",
+    "area": "PRC",
+    "name": "raw·packet 소켓을 연 프로세스",
+    "severity": "warning",
+    "attack": "T1205.002",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-07",
+    "area": "PRC",
+    "name": "LD_PRELOAD 환경변수 프로세스",
+    "severity": "warning",
+    "attack": "T1574.006",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "PRC-08",
+    "area": "PRC",
+    "name": "셸 입출력이 네트워크 소켓 (리버스 셸)",
+    "severity": "critical",
+    "attack": "T1059.004",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "NET-01",
+    "area": "NET",
+    "name": "예상 목록 밖의 리스닝 포트",
+    "severity": "warning",
+    "attack": "T1571",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "NET-02",
+    "area": "NET",
+    "name": "외부로 나가는 의심 연결",
+    "severity": "warning",
+    "attack": "T1071",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "NET-03",
+    "area": "NET",
+    "name": "/etc/hosts 변조",
+    "severity": "info",
+    "attack": "T1565.001",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "NET-04",
+    "area": "NET",
+    "name": "resolv.conf 변조",
+    "severity": "warning",
+    "attack": "T1565.001",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "NET-05",
+    "area": "NET",
+    "name": "iptables/nftables 규칙 변경",
+    "severity": "warning",
+    "attack": "T1562.004",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "NET-06",
+    "area": "NET",
+    "name": "promiscuous 모드 인터페이스",
+    "severity": "warning",
+    "attack": "T1040",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-01",
+    "area": "FS",
+    "name": "임시 디렉터리의 ELF 실행 파일",
+    "severity": "warning",
+    "attack": "T1105",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-02",
+    "area": "FS",
+    "name": "신규 SUID·SGID 파일",
+    "severity": "critical",
+    "attack": "T1548.001",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "FS-03",
+    "area": "FS",
+    "name": "capabilities가 부여된 파일",
+    "severity": "warning",
+    "attack": "T1548",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-04",
+    "area": "FS",
+    "name": "패키지 무결성 위반",
+    "severity": "critical",
+    "attack": "T1554",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-05",
+    "area": "FS",
+    "name": "시스템 바이너리 경로의 최근 변경 파일",
+    "severity": "warning",
+    "attack": "T1554",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-06",
+    "area": "FS",
+    "name": "웹 루트의 웹쉘 패턴",
+    "severity": "critical",
+    "attack": "T1505.003",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "FS-07",
+    "area": "FS",
+    "name": "웹 루트 내 최근 생성된 스크립트",
+    "severity": "warning",
+    "attack": "T1505.003",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-08",
+    "area": "FS",
+    "name": "비정상 숨김 디렉터리",
+    "severity": "warning",
+    "attack": "T1564.001",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "FS-09",
+    "area": "FS",
+    "name": "immutable 속성 설정·실행 파일",
+    "severity": "warning",
+    "attack": "T1222.002",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-01",
+    "area": "LOG",
+    "name": "로그 파일이 비었거나 잘림",
+    "severity": "critical",
+    "attack": "T1070.002",
+    "phase": 1,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-02",
+    "area": "LOG",
+    "name": "wtmp·btmp·lastlog 삭제 또는 불일치",
+    "severity": "critical",
+    "attack": "T1070.002",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-03",
+    "area": "LOG",
+    "name": "bash_history /dev/null 링크 또는 비어 있음",
+    "severity": "warning",
+    "attack": "T1070.003",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-04",
+    "area": "LOG",
+    "name": "rsyslog·journald 중단이나 설정 변경",
+    "severity": "critical",
+    "attack": "T1562.006",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-05",
+    "area": "LOG",
+    "name": "journal 시간 공백 구간",
+    "severity": "warning",
+    "attack": "T1070.002",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-06",
+    "area": "LOG",
+    "name": "타임스탬프 조작 의심",
+    "severity": "warning",
+    "attack": "T1070.006",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "CMD-01",
+    "area": "CMD",
+    "name": "history의 다운로드 후 실행",
+    "severity": "critical",
+    "attack": "T1105",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "CMD-02",
+    "area": "CMD",
+    "name": "history의 리버스 셸·인코딩 명령",
+    "severity": "critical",
+    "attack": "T1140",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "CMD-03",
+    "area": "CMD",
+    "name": "웹 서버 로그의 공격 패턴",
+    "severity": "warning",
+    "attack": "T1190",
+    "phase": 2,
+    "status": "planned"
+  }
+]
