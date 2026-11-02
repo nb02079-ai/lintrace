@@ -58,6 +58,14 @@ class Finding:
         return "Finding({} {!r})".format(self.check_id, self.reason)
 
 
+class Unavailable(Exception):
+    """점검을 끝까지 하지 못했음을 알린다 (권한 없음, 필수 파일 없음 등).
+
+    점검 항목에서 이 예외가 나오면 그 항목은 '이상 없음'이 아니라 '점검 불가'로
+    리포트된다. 읽지 못한 것을 정상으로 보고하는 일을 막기 위한 장치다.
+    """
+
+
 class Context:
     """점검 실행 환경. root는 기본 '/'이고 테스트에서는 fixture 디렉터리."""
 
@@ -67,12 +75,35 @@ class Context:
     def path(self, p: str) -> str:
         return os.path.join(self.root, p.lstrip("/"))
 
-    def read_lines(self, p: str) -> List[str]:
+    def exists(self, p: str) -> bool:
+        return os.path.lexists(self.path(p))
+
+    def read_lines(self, p: str, missing_ok: bool = False) -> List[str]:
+        """파일을 줄 단위로 읽는다.
+
+        읽을 수 없으면 Unavailable을 낸다. 단 missing_ok=True면 파일이 없을 때만
+        빈 목록을 돌려준다 (없어도 되는 파일용).
+        """
         try:
             with open(self.path(p), encoding="utf-8", errors="replace") as f:
                 return f.read().splitlines()
-        except (FileNotFoundError, PermissionError, IsADirectoryError):
+        except FileNotFoundError:
+            if missing_ok:
+                return []
+            raise Unavailable("{} 파일 없음".format(p))
+        except PermissionError:
+            raise Unavailable("{} 읽기 권한 없음 (root로 실행 필요)".format(p))
+        except IsADirectoryError:
+            raise Unavailable("{} 이(가) 파일이 아니라 디렉터리임".format(p))
+
+    def list_dir(self, p: str) -> List[str]:
+        """디렉터리 안의 이름을 정렬해 돌려준다. 없으면 빈 목록, 못 읽으면 Unavailable."""
+        try:
+            return sorted(os.listdir(self.path(p)))
+        except (FileNotFoundError, NotADirectoryError):
             return []
+        except PermissionError:
+            raise Unavailable("{} 디렉터리 읽기 권한 없음 (root로 실행 필요)".format(p))
 
 
 class Check:
@@ -86,6 +117,8 @@ class Check:
         raise NotImplementedError
 
     def finding(self, reason: str, next_steps: str, evidence: List[Evidence],
-                timestamp: Optional[float] = None) -> Finding:
-        return Finding(self.id, self.title, self.severity, self.attack,
+                timestamp: Optional[float] = None,
+                severity: Optional[str] = None) -> Finding:
+        """탐지 한 건을 만든다. severity를 주면 기본 위험도 대신 그 값을 쓴다."""
+        return Finding(self.id, self.title, severity or self.severity, self.attack,
                        reason, next_steps, evidence, timestamp)

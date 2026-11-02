@@ -6,11 +6,11 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 52개 항목을 점검하
 
 ## 상태
 
-1단계(MVP) 진행 중 — 구현 1 / 52 (`python3 -m lintrace --list`로 확인)
+1단계(MVP) 진행 중 — 구현 2 / 52 (ACC-01, ACC-06 · `python3 -m lintrace --list`로 확인)
 
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
-| 0 | 환경 준비 (정상 VM, 검증용 공개 VM) | 예정 |
+| 0 | 환경 준비 (정상 VM, 검증용 공개 VM) | 진행 중 (lin.security 준비 완료) |
 | 1 | MVP: 항목 10개 + 텍스트 리포트, lin.security 첫 적용 | 진행 중 |
 | 2 | 52개 전 항목, JSON 결과, 증거 아카이브 | 예정 |
 | 3 | 타임라인 상관분석, ATT&CK 매핑, 기준선 비교, HTML 리포트 | 예정 |
@@ -29,6 +29,8 @@ python3 -m lintrace --list          # 점검 항목과 구현 상태
 python3 -m unittest discover -s tests   # 테스트
 ```
 
+root가 아니면 읽지 못하는 파일이 있어 해당 항목은 리포트에 **점검 불가**로 따로 표시됩니다. 점검 불가 항목은 "이상 없음"으로 세지 않습니다.
+
 ## 구조
 
 ```
@@ -45,9 +47,10 @@ docs/            설계 문서
 ## 점검 항목 추가하는 법
 
 1. `rules/catalog.json`에서 항목 ID를 확인한다.
-2. `lintrace/checks/acc_01.py`를 본떠 `<id>.py`를 만든다. 파일 경로는 반드시 `ctx.path()` / `ctx.read_lines()`로 읽는다.
-3. `lintrace/checks/__init__.py`의 `ALL_CHECKS`에 등록한다.
-4. `tests/fixtures/`에 걸리는 경우와 깨끗한 경우를 만들고 테스트를 작성한다.
+2. `lintrace/checks/acc_01.py`를 본떠 `<id>.py`를 만든다. 파일은 반드시 `ctx.read_lines()` / `ctx.list_dir()`로 읽는다. 읽지 못하면 이 함수들이 `Unavailable`을 내서 '점검 불가'로 처리되므로, 직접 `open()`하고 예외를 삼키지 않는다.
+3. `lintrace/checks/__init__.py`의 `ALL_CHECKS`에 등록하고, `rules/catalog.json`의 `status`를 `implemented`로 바꾼다 (`tests/test_runner.py`가 이름·위험도·ATT&CK 일치를 확인한다).
+4. `tests/helpers.py`의 `make_root()`로 걸리는 경우와 깨끗한 경우를 만들어 테스트를 작성한다.
+5. Python 3.6 호환을 지킨다 (dataclasses, `X | None`, `list[...]` 표기 금지).
 
 ## 검증
 

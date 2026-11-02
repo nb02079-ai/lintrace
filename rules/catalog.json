@@ -6,7 +6,7 @@
     "severity": "critical",
     "attack": "T1136",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-02",
@@ -47,11 +47,11 @@
   {
     "id": "ACC-06",
     "area": "ACC",
-    "name": "sudoers의 NOPASSWD 항목",
+    "name": "sudo로 root 셸을 얻을 수 있는 권한 부여",
     "severity": "warning",
     "attack": "T1548.003",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-07",

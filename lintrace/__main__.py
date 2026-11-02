@@ -5,7 +5,7 @@ import sys
 
 from . import __version__
 from .checks import ALL_CHECKS
-from .checks.base import Context
+from .checks.base import Context, Unavailable
 from .report import text
 
 NOTICE = "본인 소유이거나 점검 권한을 받은 시스템에서만 실행하세요. 이 도구는 시스템을 수정하지 않습니다."
@@ -36,12 +36,25 @@ def main(argv=None):
     if args.root == "/" and os.geteuid() != 0:
         print("경고: root가 아니면 일부 파일을 읽지 못해 결과가 불완전합니다.", file=sys.stderr)
 
-    ctx = Context(args.root)
-    findings = []
-    for cls in ALL_CHECKS:
-        findings.extend(cls().run(ctx))
-    print(text.render(findings, [c.id for c in ALL_CHECKS]))
+    findings, unavailable = run_checks(Context(args.root), ALL_CHECKS)
+    print(text.render(findings, [c.id for c in ALL_CHECKS], unavailable))
     return 0
+
+
+def run_checks(ctx, checks):
+    """모든 항목을 실행한다. 한 항목이 실패해도 나머지는 계속 돈다.
+
+    돌려주는 값: (탐지 목록, [(항목 ID, 점검 불가 이유)])
+    """
+    findings, unavailable = [], []
+    for cls in checks:
+        try:
+            findings.extend(cls().run(ctx))
+        except Unavailable as e:
+            unavailable.append((cls.id, str(e)))
+        except Exception as e:  # 항목 하나의 버그가 전체 진단을 멈추지 않게 한다
+            unavailable.append((cls.id, "점검 중 오류 — {}: {}".format(type(e).__name__, e)))
+    return findings, unavailable
 
 
 if __name__ == "__main__":
