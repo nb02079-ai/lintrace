@@ -35,9 +35,9 @@ class TestRunner(FakeRootTest):
                                "/etc/sudoers": None})  # 읽을 수 없는 sudoers
         out = self.output(root)
         self.assertIn("점검 불가 1개", out.splitlines()[0])
-        self.assertIn("  ACC-06 — ", out)
-        self.assertIn("  ACC-01 — 계정 1개 확인", out)
-        self.assertNotIn("ACC-06", out.split("이상 없음:")[1])
+        summary = out.split("점검 범위:")[1]
+        self.assertIn("  ACC-06 — 점검 불가\n", summary)
+        self.assertIn("  ACC-01 — 계정 1개 확인 (이상 없음)", summary)
 
     def test_one_broken_check_does_not_stop_others(self):
         root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nb:x:0:0::/:/bin/sh\n"})
@@ -60,17 +60,23 @@ class TestRunner(FakeRootTest):
         self.assertNotIn("점검 불가 (", out)
 
     @files_owned_by_root
-    def test_clean_items_show_what_was_checked(self):
-        root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nbob:x:1000:1000::/home/bob:/bin/bash\n",
+    def test_summary_shows_scope_of_every_check(self):
+        root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nbob:x:1000:1000::/home/bob:/bin/bash\n"
+                                              "x:x:0:0::/:/bin/sh\n",
                                "/root/.ssh/authorized_keys": ""})
         os.chmod(os.path.join(root, "root/.ssh/authorized_keys"), 0o600)
         os.chmod(os.path.join(root, "root/.ssh"), 0o700)
         out = self.output(root)
-        clean = out.split("이상 없음:")[1]
-        self.assertIn("  ACC-01 — 계정 2개 확인", clean)
-        self.assertIn("  ACC-06 — sudo 미설치 (/etc/sudoers 없음) 확인", clean)
-        self.assertIn("  ACC-07 — 키 파일 1개, 키 0개 확인", clean)  # lin.security의 빈 root 키 파일
-        self.assertIn("  PER-01 — 예약 작업 0개, root가 실행하는 스크립트 0개 확인", clean)
+        summary = out.split("점검 범위:")[1]
+        # 탐지가 있는 항목도 무엇을 보고 몇 건을 찾았는지 나온다
+        self.assertIn("  ACC-01 — 계정 3개 확인 (탐지 1건)", summary)
+        self.assertIn("  ACC-06 — sudo 미설치 (/etc/sudoers 없음) 확인 (이상 없음)", summary)
+        self.assertIn("  ACC-07 — 키 파일 1개, 키 0개 확인 (이상 없음)", summary)  # lin.security의 빈 root 키 파일
+        self.assertIn("  PER-01 — 예약 작업 0개, root가 실행하는 스크립트 0개 확인 (이상 없음)", summary)
+        # 모든 등록 항목이 빠짐없이 한 줄씩 나온다
+        lines = [l for l in summary.splitlines() if l.startswith("  ")]
+        self.assertEqual([l.split(" — ")[0].strip() for l in lines], [c.id for c in ALL_CHECKS])
+        self.assertTrue(out.rstrip().endswith(lines[-1]))  # 리포트의 맨 끝 구역
 
 
 class TestCatalog(unittest.TestCase):

@@ -369,7 +369,8 @@ class Per01(Check):
         steps = "이 작업을 누가 추가했는지 확인하고(파일 변경 시각, 패키지 소속), 명령이 실행하는 파일과 접속 주소를 조사한다."
         if any("옵션을 주입" in c[1] for c in conditions):
             steps = ("와일드카드가 풀리는 폴더에 '-'로 시작하는 이름의 파일(예: --checkpoint-action=exec=...)이 "
-                     "있는지 확인하고, 명령을 '--' 뒤에 ./* 처럼 고쳐 옵션으로 해석되지 않게 한다.")
+                     "있는지 확인하고, 'tar ... -- *' 또는 'tar ... ./*'처럼 고쳐 파일 이름이 옵션으로 "
+                     "해석되지 않게 한다.")
         return self.finding(
             reason="{}: {}".format(subject, "; ".join(c[1] for c in conditions)),
             next_steps=steps,

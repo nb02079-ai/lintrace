@@ -56,6 +56,14 @@
 - 사용자 crontab 없음 (`/var/spool/cron/crontabs` 비어 있음)
 - 기대: PER-01 **심각** 1건 (`backup` 2행, 실행 경로 2개: `/etc/crontab` 15행과 `cron.daily` run-parts)
 
+## PER-05 정답 (`/etc/ld.so.preload`, `/etc/ld.so.conf`)
+
+- `/etc/ld.so.preload` 없음
+- `/etc/ld.so.conf`: `include /etc/ld.so.conf.d/*.conf`
+- 라이브러리 경로 4개 (Ubuntu 기본): `/usr/local/lib`, `/usr/local/lib/x86_64-linux-gnu`, `/lib/x86_64-linux-gnu`, `/usr/lib/x86_64-linux-gnu`
+- 기대: 탐지 없음, 확인 범위 "preload 없음, 라이브러리 경로 4개"
+- 폴더 권한은 정답 자료에 없음 — 도구가 직접 확인하는 첫 정보
+
 ## 2차 적용 (같은 날, 커밋 58982a3)
 
 구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
@@ -107,6 +115,36 @@ Atomic Red Team T1098.004와 같은 행위를 손으로 재현했다. 끝난 뒤
 
 시각이 `+0000`으로 표시된 것은 lin.security의 시스템 시간대가 UTC이기 때문 (점검 대상의 시간대로 표시하는 것이 의도된 동작).
 
+## 5차 적용 (커밋 a11730b)
+
+구현 항목 ACC-01, ACC-06, ACC-07, PER-01.
+
+| 확인 | 기대 | 결과 |
+| --- | --- | --- |
+| 단위 테스트 (bob 계정) | 70개 중 9개 건너뜀 | 일치 |
+| PER-01 | `backup` 2행 심각 1건 | 일치 |
+| PER-01 실행하는 곳 | `/etc/crontab` 12행(cron.daily), 15행(매분) | 일치 |
+| PER-01 오탐 | 0건 | 일치 — `cron.daily` 13개, `cron.weekly` 2개, `cron.d` 2개 모두 통과 |
+| ACC-07 | 키 파일 1개, 키 0개 | 일치 |
+
+**lin.security에 의도적으로 심어진 권한 상승 경로 4개를 모두 탐지했다.**
+
+| 경로 | 항목 | 판정 |
+| --- | --- | --- |
+| UID 0 계정 `insecurity` | ACC-01 | 심각 |
+| bob의 sudo (셸 6, 셸 탈출 19, 파일 쓰기 1) | ACC-06 | 심각 |
+| peter의 sudo strace (NOPASSWD) | ACC-06 | 심각 |
+| cron `backup`의 tar 와일드카드 주입 (root, 매분) | PER-01 | 심각 |
+
+1단계 진행: 4 / 10 (ACC-01, ACC-06, ACC-07, PER-01). 남은 항목: PER-05, PRC-01, PRC-03, FS-02, FS-06, LOG-01.
+
+발견한 문제와 조치
+
+| 발견 | 조치 |
+| --- | --- |
+| PER-01 '다음 확인' 문장에 두 해결책(`--`, `./*`)이 섞여 읽기 어려움 | 문장 수정 |
+| 확인 범위가 '이상 없음' 항목에만 보여, 탐지 항목이 몇 개를 보고 찾았는지 알 수 없음 | 리포트 끝 '점검 범위' 구역에 모든 항목의 범위와 결과를 모음 |
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
@@ -116,3 +154,4 @@ Atomic Red Team T1098.004와 같은 행위를 손으로 재현했다. 끝난 뒤
 3. `sudo /bin/bash -c 'cd /home/bob/lintrace && python3 -m lintrace'` — 5회 (1차 1회, 2차 2회, 3차 2회 — 3차 중 1회는 이전 버전)
 4. `sudo /bin/bash -c` 로 정답 자료 확인 — `find`(authorized_keys), `ls`/`grep`(sshd 설정), `cat`(crontab, cron.d), `ls`/`cat`(cron.* 폴더, backup)
 5. `sudo /bin/bash` 대화형 셸 1회 — 4차 적용(키 심기, `ssh-keygen`, 도구 실행). 이후 스냅샷 복원
+6. 5차 적용 도구 실행 1회, PER-05 정답 확인 `ls`/`cat` 1회

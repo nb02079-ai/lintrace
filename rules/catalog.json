@@ -141,7 +141,7 @@
     "severity": "critical",
     "attack": "T1574.006",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-06",

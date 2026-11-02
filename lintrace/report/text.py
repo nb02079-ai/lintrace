@@ -35,11 +35,22 @@ def render(findings, ran_ids, unavailable=None, scopes=None):
         for check_id, reason in unavailable:
             out.append("  {} — {}".format(check_id, reason))
         out.append("")
-    hit = {f.check_id for f in findings}
+    # 모든 항목이 무엇을 보고 어떤 결과를 냈는지 한곳에 모은다.
+    # "17개를 보고 1개를 찾았다"가 보여야 탐지 결과와 오탐 수준을 함께 판단할 수 있다.
+    counts = {}
+    for f in findings:
+        counts[f.check_id] = counts.get(f.check_id, 0) + 1
     skipped = {i for i, _ in unavailable}
-    clean = [i for i in ran_ids if i not in hit and i not in skipped]
-    if clean:
-        out.append("이상 없음:")
-        for i in clean:
-            out.append("  {} — {} 확인".format(i, scopes[i]) if i in scopes else "  {}".format(i))
+    out.append("점검 범위:")
+    for i in ran_ids:
+        if i in skipped:
+            status = "점검 불가"
+        elif i in counts:
+            status = "탐지 {}건".format(counts[i])
+        else:
+            status = "이상 없음"
+        if i in scopes and i not in skipped:
+            out.append("  {} — {} 확인 ({})".format(i, scopes[i], status))
+        else:
+            out.append("  {} — {}".format(i, status))
     return "\n".join(out)
