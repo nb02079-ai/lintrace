@@ -134,6 +134,7 @@ class _Sudoers:
     def __init__(self, ctx: Context):
         self.ctx = ctx
         self.aliases = {"User_Alias": {}, "Runas_Alias": {}, "Cmnd_Alias": {}}
+        self.alias_src = {}  # (종류, 이름) → (파일 경로, 줄 번호, 정의 줄) — 근거 표시용
         self.rules = []      # (파일 경로, 줄 번호, 규칙 줄)
         self.visited = set()
 
@@ -167,38 +168,51 @@ class _Sudoers:
                     if "=" not in part or kind not in self.aliases:
                         continue
                     name, value = part.split("=", 1)
-                    self.aliases[kind][name.strip()] = [v.strip() for v in split_top(value, ",") if v.strip()]
+                    name = name.strip()
+                    self.aliases[kind][name] = [v.strip() for v in split_top(value, ",") if v.strip()]
+                    self.alias_src[(kind, name)] = (path, no, s)
                 continue
             if "=" in s:
                 self.rules.append((path, no, s))
 
-    def expand(self, kind, items, depth=0):
+    def expand(self, kind, items, used, depth=0):
+        """별칭을 풀어 쓴다. 풀어 쓴 별칭은 used에 (종류, 이름)으로 기록한다."""
         out = []
         for it in items:
             it = it.strip()
             if not it:
                 continue
             if depth < MAX_DEPTH and ALIAS_NAME.match(it) and it in self.aliases[kind]:
-                out.extend(self.expand(kind, self.aliases[kind][it], depth + 1))
+                used.add((kind, it))
+                out.extend(self.expand(kind, self.aliases[kind][it], used, depth + 1))
             else:
                 out.append(it)
         return out
 
-    def runs_as_root(self, spec):
+    def runs_as_root(self, spec, used):
         """'(ALL)', '(ALL:ALL)', '(root)', '(:wheel)' 등에서 root로 실행되는지 본다."""
         user_part = spec.split(":", 1)[0]
         if not user_part.strip():
             return False  # '(:그룹)'만 있으면 실행하는 본인 계정으로 돈다
-        users = self.expand("Runas_Alias", user_part.split(","))
+        users = self.expand("Runas_Alias", user_part.split(","), used)
         return any(u in ("ALL", "root", "#0") for u in users)
 
+    def alias_lines(self, used):
+        """사용된 별칭의 정의 줄을 (파일, 줄 번호, 내용)으로, 중복 없이 순서대로 돌려준다."""
+        lines = {self.alias_src[key] for key in used if key in self.alias_src}
+        return sorted(lines, key=lambda x: (x[0], x[1]))
+
     def analyze(self, text):
-        """규칙 한 줄을 분석한다. 위험하지 않으면 None."""
+        """규칙 한 줄을 분석한다. 위험하지 않으면 None.
+
+        돌려주는 값: (사용자 목록, 분류별 프로그램, NOPASSWD 여부, 사용된 별칭)
+        """
+        used = set()
         left, right = text.split("=", 1)
         tokens = re.sub(r"\s*,\s*", ",", left.strip()).split()
         if len(tokens) < 2:
             return None
-        users = [u for u in self.expand("User_Alias", tokens[0].split(",")) if not u.startswith("!")]
+        users = [u for u in self.expand("User_Alias", tokens[0].split(","), used) if not u.startswith("!")]
         risky_users = [u for u in users if u not in ADMIN_USERS]
         if not risky_users:
             return None
@@ -209,7 +223,7 @@ class _Sudoers:
             item = item.strip()
             m = RUNAS.match(item)
             if m:  # runas와 태그는 같은 줄의 뒤쪽 명령에도 이어서 적용된다
-                as_root = self.runs_as_root(m.group(1))
+                as_root = self.runs_as_root(m.group(1), used)
                 item = item[m.end():]
             while True:
                 m = TAG.match(item)
@@ -222,7 +236,7 @@ class _Sudoers:
                 item = item[m.end():]
             if not item or item.startswith("!") or not as_root:
                 continue
-            for cmd in self.expand("Cmnd_Alias", [item]):
+            for cmd in self.expand("Cmnd_Alias", [item], used):
                 if cmd.startswith("!"):
                     continue
                 category, name = classify(cmd)
@@ -231,7 +245,7 @@ class _Sudoers:
                     nopasswd_hit = nopasswd_hit or nopasswd
         if not any(hits.values()):
             return None
-        return risky_users, hits, nopasswd_hit
+        return risky_users, hits, nopasswd_hit, used
 
 
 class Acc06(Check):
@@ -241,8 +255,8 @@ class Acc06(Check):
     attack = "T1548.003"
 
     def run(self, ctx: Context):
-        if not ctx.exists("/etc/sudoers"):
-            return []  # sudo가 설치되지 않은 시스템
+        if ctx.stat("/etc/sudoers") is None:
+            return []  # sudo가 설치되지 않은 시스템 (못 보는 경우는 stat이 Unavailable을 낸다)
         sudoers = _Sudoers(ctx)
         sudoers.parse_file("/etc/sudoers")
 
@@ -251,7 +265,7 @@ class Acc06(Check):
             result = sudoers.analyze(text)
             if result is None:
                 continue
-            users, hits, nopasswd = result
+            users, hits, nopasswd, used = result
             if hits["all"] or hits["shell"] or nopasswd:
                 severity = "critical"
             else:
@@ -270,7 +284,10 @@ class Acc06(Check):
                 reason=reason,
                 next_steps="이 권한이 업무에 필요한지 확인하고, 규칙이 추가된 시점(파일 변경 시각)과 "
                            "해당 계정의 sudo 사용 기록(auth.log의 'COMMAND=')을 확인한다.",
-                evidence=[Evidence(path, "{}행: {}".format(no, text))],
+                # 규칙 줄 + 그 규칙이 쓴 별칭의 정의 줄 (별칭을 찾으러 sudoers를 다시 열 필요가 없게)
+                evidence=[Evidence(path, "{}행: {}".format(no, text))] + [
+                    Evidence(p, "{}행 (별칭 정의): {}".format(n, t))
+                    for p, n, t in sudoers.alias_lines(used)],
                 severity=severity,
             ))
         return findings

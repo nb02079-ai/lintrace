@@ -6,7 +6,7 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 52개 항목을 점검하
 
 ## 상태
 
-1단계(MVP) 진행 중 — 구현 2 / 52 (ACC-01, ACC-06 · `python3 -m lintrace --list`로 확인)
+1단계(MVP) 진행 중 — 구현 3 / 52 (ACC-01, ACC-06, ACC-07 · `python3 -m lintrace --list`로 확인)
 
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
@@ -28,6 +28,8 @@ sudo python3 -m lintrace            # 점검 실행
 python3 -m lintrace --list          # 점검 항목과 구현 상태
 python3 -m unittest discover -s tests   # 테스트
 ```
+
+파일 변경 시각은 `touch`로 조작할 수 있어 위험도 판단에 쓰지 않고, 근거에 경과 시간(예: `3일 전 (2026-10-30 14:02:11 +0900)`)으로만 표시합니다. 미래 시각만 조작 흔적으로 봅니다.
 
 root가 아니면 읽지 못하는 파일이 있어 해당 항목은 리포트에 **점검 불가**로 따로 표시됩니다. 점검 불가 항목은 "이상 없음"으로 세지 않습니다.
 
@@ -51,6 +53,8 @@ docs/            설계 문서
 3. `lintrace/checks/__init__.py`의 `ALL_CHECKS`에 등록하고, `rules/catalog.json`의 `status`를 `implemented`로 바꾼다 (`tests/test_runner.py`가 이름·위험도·ATT&CK 일치를 확인한다).
 4. `tests/helpers.py`의 `make_root()`로 걸리는 경우와 깨끗한 경우를 만들어 테스트를 작성한다.
 5. Python 3.6 호환을 지킨다 (dataclasses, `X | None`, `list[...]` 표기 금지).
+6. 변경 시각은 위험도 조건에 쓰지 않는다. 근거에 `timefmt.describe(st.st_mtime, ctx.now)`로 표시만 한다.
+7. 파일 존재 확인은 `os.path.exists()` 대신 `ctx.stat()`을 쓴다. 상위 디렉터리 권한이 없을 때 "없음"과 "못 봄"을 구분하기 위해서다. (`ctx.read_lines()`는 FIFO 등 일반 파일이 아닌 것을 열지 않는다.)
 
 ## 검증
 

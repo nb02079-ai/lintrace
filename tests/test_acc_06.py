@@ -117,6 +117,25 @@ class TestAcc06(FakeRootTest):
     def test_negated_command_is_not_counted(self):
         self.assertEqual(self.run_with("alice ALL=(ALL) /usr/sbin/service, !/bin/bash\n"), [])
 
+    def test_linsecurity_real_form_shows_alias_definition(self):
+        # 실제 lin.security sudoers는 bob 권한을 별칭 하나로 적어 두었다
+        commands = LINSECURITY_BOB.split(") ", 1)[1].strip()
+        sudoers = (UBUNTU_DEFAULT + "Cmnd_Alias ALLTHETHINGS = " + commands + "\n"
+                   "Cmnd_Alias STRACE = /usr/bin/strace\n"
+                   "peter ALL=(ALL) NOPASSWD: STRACE\n"
+                   "bob   ALL=(ALL) ALLTHETHINGS\n")
+        f = self.run_with(sudoers)
+        self.assertEqual(len(f), 2)
+        peter, bob = f
+        self.assertIn("셸 탈출 1개(strace)", peter.reason)
+        self.assertEqual(peter.severity, "critical")
+        self.assertIn("셸 6개", bob.reason)
+        self.assertEqual(len(bob.evidence), 2)
+        self.assertIn("bob   ALL=(ALL) ALLTHETHINGS", bob.evidence[0].detail)
+        self.assertIn("(별칭 정의): Cmnd_Alias ALLTHETHINGS = /bin/ash", bob.evidence[1].detail)
+        self.assertEqual(len(peter.evidence), 2)
+        self.assertIn("Cmnd_Alias STRACE", peter.evidence[1].detail)
+
     def test_aliases_and_includedir(self):
         f = self.run_with(UBUNTU_DEFAULT, {
             "/etc/sudoers.d/ops": "User_Alias OPS = carol, dave\n"
@@ -129,6 +148,12 @@ class TestAcc06(FakeRootTest):
         self.assertIn("'carol, dave'", f[0].reason)
         self.assertEqual(f[0].evidence[0].source, "/etc/sudoers.d/ops")
         self.assertEqual(f[0].severity, "critical")
+        # 규칙 줄 + User_Alias 정의(1행) + Cmnd_Alias 정의(2행)
+        self.assertEqual([e.detail.split(" ", 1)[0] for e in f[0].evidence], ["3행:", "1행", "2행"])
+
+    def test_rule_without_alias_has_single_evidence(self):
+        f = self.run_with("alice ALL=(ALL) /bin/sh\n")
+        self.assertEqual(len(f[0].evidence), 1)
 
     def test_include_loop_does_not_hang(self):
         f = self.run_with("@include /etc/sudoers\nbob ALL=(ALL) /bin/sh\n")

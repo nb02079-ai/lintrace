@@ -38,10 +38,35 @@
 
 다음 적용에서 ACC-06이 bob 규칙 하나를 **심각**으로, 위 26개를 근거로 내야 한다.
 
+## 2차 적용 (같은 날, 커밋 58982a3)
+
+구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
+
+| 확인 | 결과 |
+| --- | --- |
+| 단위 테스트 (28개, bob 계정) | 통과 — 권한 테스트도 건너뛰지 않고 실행됨 |
+| 전체 판정 | 심각 (탐지 3건, 점검 불가 0) |
+
+| 항목 | 기대 | 결과 | 근거 |
+| --- | --- | --- | --- |
+| ACC-01 | 탐지, 해시 가림 | 일치 | `insecurity:<가림>:0:0::/:/bin/sh` |
+| ACC-06 bob | 심각, 셸 6 / 셸 탈출 19 / 파일 쓰기 1 | **정확히 일치** | `/etc/sudoers` 24행 `bob ALL=(ALL) ALLTHETHINGS` |
+| ACC-06 peter | (정답 목록에 없음) | 심각, `strace` NOPASSWD | `/etc/sudoers` 23행 `peter ALL=(ALL) NOPASSWD: STRACE` |
+
+- 실제 sudoers는 bob 권한을 `Cmnd_Alias ALLTHETHINGS` 하나로 적어 두었다. 테스트 fixture(직접 나열)와 형태가 달랐지만 별칭을 풀어 정답과 같은 26개를 찾았다.
+- peter 규칙은 bob의 `sudo -l`로 만든 정답 목록 밖이었다. 도구가 sudoers 전체를 읽어 찾았다. 정답 목록에 추가한다.
+- **1단계 완료 조건(권한 상승 경로 3개 이상) 충족**: UID 0 계정(insecurity), bob의 sudo, peter의 sudo strace.
+
+발견한 문제와 조치
+
+| 발견 | 조치 |
+| --- | --- |
+| 근거에 별칭 이름(`ALLTHETHINGS`, `STRACE`)만 보여 정의를 찾으러 sudoers를 다시 열어야 함 | 사용한 별칭의 정의 줄을 근거에 추가 |
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
 
 1. `sudo python3 -m lintrace` — 거부 (2회)
 2. `sudo -l` — 1회
-3. `sudo /bin/bash -c 'cd /home/bob/lintrace && python3 -m lintrace'` — 1회
+3. `sudo /bin/bash -c 'cd /home/bob/lintrace && python3 -m lintrace'` — 3회 (1차 1회, 2차 2회)

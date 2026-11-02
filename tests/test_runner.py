@@ -46,6 +46,14 @@ class TestRunner(FakeRootTest):
         self.assertEqual(unavailable[0][0], "TEST-99")
         self.assertIn("ValueError: 버그", unavailable[0][1])
 
+    def test_fifo_in_place_of_file_does_not_hang(self):
+        root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\n"})
+        os.mkfifo(os.path.join(root, "etc", "sudoers"), 0o600)
+        findings, unavailable = run_checks(Context(root), list(ALL_CHECKS))  # 멈추면 실패
+        self.assertEqual(findings, [])
+        self.assertEqual(unavailable[0][0], "ACC-06")
+        self.assertIn("일반 파일이 아님", unavailable[0][1])
+
     def test_clean_report_has_no_unavailable_section(self):
         out = text.render([], ["ACC-01"], [])
         self.assertTrue(out.startswith("전체 판정: 정상\n"))

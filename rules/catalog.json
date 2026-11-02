@@ -11,7 +11,7 @@
   {
     "id": "ACC-02",
     "area": "ACC",
-    "name": "최근 생성된 계정",
+    "name": "생성 기록이 없는 계정",
     "severity": "warning",
     "attack": "T1136.001",
     "phase": 2,
@@ -29,7 +29,7 @@
   {
     "id": "ACC-04",
     "area": "ACC",
-    "name": "비밀번호가 빈 계정",
+    "name": "비밀번호 필드 이상",
     "severity": "warning",
     "attack": "T1098",
     "phase": 2,
@@ -38,7 +38,7 @@
   {
     "id": "ACC-05",
     "area": "ACC",
-    "name": "sudo 그룹 신규 멤버",
+    "name": "관리자 그룹 구성원 이상",
     "severity": "warning",
     "attack": "T1098",
     "phase": 2,
@@ -56,11 +56,11 @@
   {
     "id": "ACC-07",
     "area": "ACC",
-    "name": "authorized_keys 신규 키나 변경",
+    "name": "authorized_keys 의심 키와 변경 이력",
     "severity": "critical",
     "attack": "T1098.004",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-08",
@@ -110,7 +110,7 @@
   {
     "id": "PER-02",
     "area": "PER",
-    "name": "신규 systemd 서비스·타이머",
+    "name": "패키지에 속하지 않는 systemd 서비스·타이머",
     "severity": "warning",
     "attack": "T1543.002",
     "phase": 2,
@@ -317,7 +317,7 @@
   {
     "id": "FS-02",
     "area": "FS",
-    "name": "신규 SUID·SGID 파일",
+    "name": "패키지에 속하지 않거나 비정상 위치의 SUID·SGID 파일",
     "severity": "critical",
     "attack": "T1548.001",
     "phase": 1,
@@ -344,7 +344,7 @@
   {
     "id": "FS-05",
     "area": "FS",
-    "name": "시스템 바이너리 경로의 최근 변경 파일",
+    "name": "시스템 바이너리 경로의 패키지 밖 파일",
     "severity": "warning",
     "attack": "T1554",
     "phase": 2,
@@ -362,7 +362,7 @@
   {
     "id": "FS-07",
     "area": "FS",
-    "name": "웹 루트 내 최근 생성된 스크립트",
+    "name": "웹 서버 계정이 만든 웹 루트 스크립트",
     "severity": "warning",
     "attack": "T1505.003",
     "phase": 2,
