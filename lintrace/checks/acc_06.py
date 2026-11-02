@@ -137,11 +137,14 @@ class _Sudoers:
         self.alias_src = {}  # (종류, 이름) → (파일 경로, 줄 번호, 정의 줄) — 근거 표시용
         self.rules = []      # (파일 경로, 줄 번호, 규칙 줄)
         self.visited = set()
+        self.read_files = []  # 실제로 읽은 파일 (없는 include는 빠짐)
 
     def parse_file(self, path, depth=0, missing_ok=False):
         if depth > MAX_DEPTH or path in self.visited:
             return
         self.visited.add(path)
+        if self.ctx.stat(path, follow=True) is not None:
+            self.read_files.append(path)
         for no, line in logical_lines(self.ctx.read_lines(path, missing_ok=missing_ok)):
             s = line.strip()
             m = DIRECTIVE.match(s)  # '#includedir'은 '#'로 시작하지만 주석이 아니다
@@ -256,9 +259,11 @@ class Acc06(Check):
 
     def run(self, ctx: Context):
         if ctx.stat("/etc/sudoers") is None:
-            return []  # sudo가 설치되지 않은 시스템 (못 보는 경우는 stat이 Unavailable을 낸다)
+            self.scope = "sudo 미설치 (/etc/sudoers 없음)"
+            return []  # 못 보는 경우는 stat이 Unavailable을 낸다
         sudoers = _Sudoers(ctx)
         sudoers.parse_file("/etc/sudoers")
+        self.scope = "sudoers 파일 {}개, 사용자 규칙 {}개".format(len(sudoers.read_files), len(sudoers.rules))
 
         findings = []
         for path, no, text in sudoers.rules:

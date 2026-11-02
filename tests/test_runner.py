@@ -10,7 +10,7 @@ from lintrace.checks import ALL_CHECKS
 from lintrace.checks.base import Check, Context
 from lintrace.report import text
 
-from helpers import FakeRootTest
+from helpers import FakeRootTest, files_owned_by_root
 
 CATALOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules", "catalog.json")
 SEVERITY = {"critical", "warning", "info"}
@@ -36,12 +36,12 @@ class TestRunner(FakeRootTest):
         out = self.output(root)
         self.assertIn("점검 불가 1개", out.splitlines()[0])
         self.assertIn("  ACC-06 — ", out)
-        self.assertIn("이상 없음: ACC-01", out)
+        self.assertIn("  ACC-01 — 계정 1개 확인", out)
         self.assertNotIn("ACC-06", out.split("이상 없음:")[1])
 
     def test_one_broken_check_does_not_stop_others(self):
         root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nb:x:0:0::/:/bin/sh\n"})
-        findings, unavailable = run_checks(Context(root), [Broken] + list(ALL_CHECKS))
+        findings, unavailable, _ = run_checks(Context(root), [Broken] + list(ALL_CHECKS))
         self.assertEqual([f.check_id for f in findings], ["ACC-01"])
         self.assertEqual(unavailable[0][0], "TEST-99")
         self.assertIn("ValueError: 버그", unavailable[0][1])
@@ -49,7 +49,7 @@ class TestRunner(FakeRootTest):
     def test_fifo_in_place_of_file_does_not_hang(self):
         root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\n"})
         os.mkfifo(os.path.join(root, "etc", "sudoers"), 0o600)
-        findings, unavailable = run_checks(Context(root), list(ALL_CHECKS))  # 멈추면 실패
+        findings, unavailable, _ = run_checks(Context(root), list(ALL_CHECKS))  # 멈추면 실패
         self.assertEqual(findings, [])
         self.assertEqual(unavailable[0][0], "ACC-06")
         self.assertIn("일반 파일이 아님", unavailable[0][1])
@@ -58,6 +58,19 @@ class TestRunner(FakeRootTest):
         out = text.render([], ["ACC-01"], [])
         self.assertTrue(out.startswith("전체 판정: 정상\n"))
         self.assertNotIn("점검 불가 (", out)
+
+    @files_owned_by_root
+    def test_clean_items_show_what_was_checked(self):
+        root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nbob:x:1000:1000::/home/bob:/bin/bash\n",
+                               "/root/.ssh/authorized_keys": ""})
+        os.chmod(os.path.join(root, "root/.ssh/authorized_keys"), 0o600)
+        os.chmod(os.path.join(root, "root/.ssh"), 0o700)
+        out = self.output(root)
+        clean = out.split("이상 없음:")[1]
+        self.assertIn("  ACC-01 — 계정 2개 확인", clean)
+        self.assertIn("  ACC-06 — sudo 미설치 (/etc/sudoers 없음) 확인", clean)
+        self.assertIn("  ACC-07 — 키 파일 1개, 키 0개 확인", clean)  # lin.security의 빈 root 키 파일
+        self.assertIn("  PER-01 — 예약 작업 0개, root가 실행하는 스크립트 0개 확인", clean)
 
 
 class TestCatalog(unittest.TestCase):

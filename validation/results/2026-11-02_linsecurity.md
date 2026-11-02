@@ -38,6 +38,24 @@
 
 다음 적용에서 ACC-06이 bob 규칙 하나를 **심각**으로, 위 26개를 근거로 내야 한다.
 
+추가 (2차 적용에서 발견): `peter ALL=(ALL) NOPASSWD: STRACE` — `strace` 셸 탈출, 비밀번호 없음 → **심각**
+
+## ACC-07 정답 (`find / -name "authorized_keys*"`)
+
+- `/root/.ssh/authorized_keys` — 0바이트(키 없음), 권한 600, `.ssh` 700, root 소유
+- sshd 설정: `AuthorizedKeysFile`은 주석 처리된 기본값
+- 기대: 탐지 없음
+
+## PER-01 정답 (`/etc/crontab`, `/etc/cron.d`, 사용자 crontab, `cron.*` 폴더)
+
+- `/etc/crontab` 15행 `*/1 * * * * root /etc/cron.daily/backup` — 원래 하루 한 번 도는 스크립트를 root로 **매분** 실행
+- `/etc/cron.daily/backup` 2행 `for i in $(ls /home); do cd /home/$i && /bin/tar -zcf /etc/backups/home-$i.tgz *; done`
+  - 사용자 홈에서 `tar ... *` → 파일 이름으로 tar 옵션 주입(`--checkpoint-action=exec=...`) → 모든 사용자가 root 획득 가능
+  - 스크립트 자체는 `755 root`라 수정 불가 — 위험은 내용에 있음
+- 그 외: `run-parts` 4줄, `cron.d/mdadm`, `cron.d/popularity-contest`, `cron.daily`의 Ubuntu 기본 스크립트 13개 — 정상
+- 사용자 crontab 없음 (`/var/spool/cron/crontabs` 비어 있음)
+- 기대: PER-01 **심각** 1건 (`backup` 2행, 실행 경로 2개: `/etc/crontab` 15행과 `cron.daily` run-parts)
+
 ## 2차 적용 (같은 날, 커밋 58982a3)
 
 구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
@@ -63,10 +81,38 @@
 | --- | --- |
 | 근거에 별칭 이름(`ALLTHETHINGS`, `STRACE`)만 보여 정의를 찾으러 sudoers를 다시 열어야 함 | 사용한 별칭의 정의 줄을 근거에 추가 |
 
+## 3차 적용 (커밋 d9f91ae)
+
+구현 항목 ACC-01, ACC-06, ACC-07. 첨부 앞부분의 실행은 이전 버전이라 제외했다.
+
+| 확인 | 결과 |
+| --- | --- |
+| 단위 테스트 (54개, bob 계정) | 통과, 일반 계정에서만 건너뛰는 4개 제외 |
+| ACC-06 별칭 근거 | 일치 — `STRACE`(18행), `ALLTHETHINGS`(19행) 정의 줄 표시 |
+| ACC-07 | 이상 없음 — 정답과 일치 (빈 키 파일, 오탐 없음) |
+
+## 4차 적용 — ACC-07 양성 확인 (키를 심어 재현)
+
+Atomic Red Team T1098.004와 같은 행위를 손으로 재현했다. 끝난 뒤 `original` 스냅샷으로 복원.
+
+1. `ssh-keygen -t ed25519 -f /tmp/lt-test -N "" -C "lintrace-test"` → 지문 `SHA256:Y/akg+DeFOV/papfgqGjkQNY2qQ87NqV6rySrhsezs0`
+2. 같은 공개키를 `/.ssh/authorized_keys`(insecurity, UID 0)와 `/var/www/.ssh/authorized_keys`(www-data)에 넣음
+
+| 기대 | 결과 |
+| --- | --- |
+| 심각: insecurity(UID 0)의 키 | 일치 |
+| 심각: www-data(시스템 계정)의 키 | 일치 |
+| 참고: 같은 키가 두 계정에 등록됨 | 일치 |
+| 근거의 지문이 `ssh-keygen` 출력과 같음 | **완전히 일치** — auth.log의 `Accepted publickey ... SHA256:...`와 바로 대조 가능 |
+
+시각이 `+0000`으로 표시된 것은 lin.security의 시스템 시간대가 UTC이기 때문 (점검 대상의 시간대로 표시하는 것이 의도된 동작).
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
 
 1. `sudo python3 -m lintrace` — 거부 (2회)
 2. `sudo -l` — 1회
-3. `sudo /bin/bash -c 'cd /home/bob/lintrace && python3 -m lintrace'` — 3회 (1차 1회, 2차 2회)
+3. `sudo /bin/bash -c 'cd /home/bob/lintrace && python3 -m lintrace'` — 5회 (1차 1회, 2차 2회, 3차 2회 — 3차 중 1회는 이전 버전)
+4. `sudo /bin/bash -c` 로 정답 자료 확인 — `find`(authorized_keys), `ls`/`grep`(sshd 설정), `cat`(crontab, cron.d), `ls`/`cat`(cron.* 폴더, backup)
+5. `sudo /bin/bash` 대화형 셸 1회 — 4차 적용(키 심기, `ssh-keygen`, 도구 실행). 이후 스냅샷 복원

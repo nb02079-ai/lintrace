@@ -167,6 +167,7 @@ class Acc07(Check):
                     owners.setdefault(path, []).append((name, uid))
 
         seen_keys = {}  # 지문 → [(파일, 계정 이름들)]
+        self.key_files = self.key_count = 0
         for path in sorted(owners):
             st = ctx.stat(path)
             if st is None or stat.S_ISDIR(st.st_mode):
@@ -175,6 +176,7 @@ class Acc07(Check):
             finding = self.check_file(ctx, path, st, accounts, seen_keys)
             if finding:
                 findings.append(finding)
+        self.scope = "키 파일 {}개, 키 {}개".format(self.key_files, self.key_count)
 
         dup = {fp: places for fp, places in seen_keys.items() if len(places) > 1}
         for fp in sorted(dup):
@@ -200,9 +202,11 @@ class Acc07(Check):
             if stat.S_ISDIR(target_st.st_mode):
                 return None
 
+        self.key_files += 1
         critical, warning = [], []
         if stat.S_ISREG(target_st.st_mode):
             keys = parse_keys(ctx.read_lines(path))
+            self.key_count += len(keys)
         else:
             # FIFO 등을 열면 진단 도구가 멈출 수 있으므로 읽지 않는다
             keys = []

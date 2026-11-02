@@ -21,11 +21,12 @@ class Acc01(Check):
     attack = "T1136"
 
     def run(self, ctx: Context):
-        findings = []
+        findings, accounts = [], 0
         for lineno, line in enumerate(ctx.read_lines("/etc/passwd"), start=1):
             parts = line.split(":")
             if len(parts) < 7 or line.startswith("#"):
                 continue
+            accounts += 1
             name, uid = parts[0], parts[2]
             if uid == "0" and name != "root":
                 findings.append(self.finding(
@@ -33,4 +34,5 @@ class Acc01(Check):
                     next_steps="계정 생성 시각(auth.log의 useradd), 이 계정의 로그인 기록, 홈 디렉터리 내용을 확인한다.",
                     evidence=[Evidence("/etc/passwd", "{}행: {}".format(lineno, mask_passwd_line(line)))],
                 ))
+        self.scope = "계정 {}개".format(accounts)
         return findings

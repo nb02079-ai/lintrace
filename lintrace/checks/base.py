@@ -124,6 +124,22 @@ class Context:
         except PermissionError:
             raise Unavailable("{} 읽기 권한 없음 (root로 실행 필요)".format(p))
 
+    def read_head(self, p: str, n: int = 2) -> bytes:
+        """일반 파일의 앞부분 n바이트를 읽는다 (스크립트인지 '#!'로 확인하는 용도).
+
+        일반 파일이 아니거나 없으면 b''. 권한이 없으면 Unavailable.
+        """
+        full = self.path(p)
+        try:
+            if not stat.S_ISREG(os.stat(full).st_mode):
+                return b""
+            with open(full, "rb") as f:
+                return f.read(n)
+        except (FileNotFoundError, NotADirectoryError):
+            return b""
+        except PermissionError:
+            raise Unavailable("{} 읽기 권한 없음 (root로 실행 필요)".format(p))
+
     def list_dir(self, p: str) -> List[str]:
         """디렉터리 안의 이름을 정렬해 돌려준다. 없으면 빈 목록, 못 읽으면 Unavailable."""
         try:
@@ -140,6 +156,10 @@ class Check:
     title = None
     severity = None  # critical / warning / info
     attack = None    # ATT&CK 기법 ID
+
+    # run()이 끝나면 무엇을 확인했는지 한 줄로 남긴다 (예: "키 파일 1개, 키 0개").
+    # '이상 없음'이 '볼 게 없었음'인지 '보고도 못 찾음'인지 리포트에서 구분하기 위해서다.
+    scope = None
 
     def run(self, ctx: Context) -> List[Finding]:
         raise NotImplementedError

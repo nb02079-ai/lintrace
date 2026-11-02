@@ -5,6 +5,15 @@ import tempfile
 import unittest
 
 
+def files_owned_by_root(test):
+    """테스트 파일의 소유자가 root여야 '정상'으로 나오는 테스트.
+
+    일반 계정으로 돌리면 테스트 파일 소유자가 실행 계정이 되어, 도구가 (올바르게)
+    '다른 계정 소유의 파일'로 위험 판정한다. 소유자를 맞출 수 있는 root에서만 돌린다.
+    """
+    return unittest.skipIf(os.geteuid() != 0, "파일 소유자를 root로 맞출 수 있는 root에서만 확인 가능")(test)
+
+
 class FakeRootTest(unittest.TestCase):
     """make_root({'/etc/passwd': '...'})로 임시 루트를 만들고 테스트가 끝나면 지운다."""
 

@@ -11,9 +11,11 @@ def verdict(findings):
     return "정상"
 
 
-def render(findings, ran_ids, unavailable=None):
-    """findings: 탐지 목록, ran_ids: 실행한 항목 ID, unavailable: [(항목 ID, 이유)]"""
+def render(findings, ran_ids, unavailable=None, scopes=None):
+    """findings: 탐지 목록, ran_ids: 실행한 항목 ID, unavailable: [(항목 ID, 이유)],
+    scopes: {항목 ID: 확인 범위}"""
     unavailable = unavailable or []
+    scopes = scopes or {}
     head = "전체 판정: {}".format(verdict(findings))
     if unavailable:
         # 점검하지 못한 항목이 있으면 '정상'이 확정이 아님을 판정 줄에서 바로 알린다
@@ -37,5 +39,7 @@ def render(findings, ran_ids, unavailable=None):
     skipped = {i for i, _ in unavailable}
     clean = [i for i in ran_ids if i not in hit and i not in skipped]
     if clean:
-        out.append("이상 없음: " + ", ".join(clean))
+        out.append("이상 없음:")
+        for i in clean:
+            out.append("  {} — {} 확인".format(i, scopes[i]) if i in scopes else "  {}".format(i))
     return "\n".join(out)

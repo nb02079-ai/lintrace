@@ -2,5 +2,6 @@
 from .acc_01 import Acc01
 from .acc_06 import Acc06
 from .acc_07 import Acc07
+from .per_01 import Per01
 
-ALL_CHECKS = [Acc01, Acc06, Acc07]
+ALL_CHECKS = [Acc01, Acc06, Acc07, Per01]

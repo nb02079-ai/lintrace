@@ -5,7 +5,7 @@ import unittest
 from lintrace.checks.acc_07 import Acc07, expand_pattern, fingerprint, parse_keys
 from lintrace.checks.base import Context, Unavailable
 
-from helpers import FakeRootTest
+from helpers import FakeRootTest, files_owned_by_root
 
 NOW = 1793600000.0
 DAY = 86400
@@ -22,15 +22,6 @@ PASSWD = (
     "insecurity:<hash>:0:0::/:/bin/sh\n"
     "nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin\n"
 )
-
-
-def owner_must_match(test):
-    """파일 소유자가 계정과 맞아야 '참고'로 나오는 테스트.
-
-    일반 계정으로 돌리면 테스트 파일 소유자가 실행 계정이 되어, 도구가 (올바르게)
-    '소유자가 다른 계정'으로 위험 판정한다. 소유자를 맞출 수 있는 root에서만 돌린다.
-    """
-    return unittest.skipIf(os.geteuid() != 0, "파일 소유자를 계정에 맞출 수 있는 root에서만 확인 가능")(test)
 
 
 def key(k, comment=""):
@@ -82,7 +73,7 @@ class TestAcc07(FakeRootTest):
         _, f = self.scan({})
         self.assertEqual(f, [])
 
-    @owner_must_match
+    @files_owned_by_root
     def test_normal_user_key_is_info_with_elapsed_time(self):
         path = "/home/bob/.ssh/authorized_keys"
         _, f = self.scan({path: key(KEY_A, "bob@laptop")}, mtimes={path: NOW - 3 * DAY},
@@ -95,7 +86,7 @@ class TestAcc07(FakeRootTest):
         self.assertIn("(bob@laptop)", details[0])
         self.assertTrue(details[-1].startswith("파일 변경: 3일 전 ("))
 
-    @owner_must_match
+    @files_owned_by_root
     def test_root_key_is_info(self):
         _, f = self.scan({"/root/.ssh/authorized_keys": key(KEY_A)},
                          modes={"/root/.ssh": 0o700, "/root/.ssh/authorized_keys": 0o600})
@@ -121,7 +112,7 @@ class TestAcc07(FakeRootTest):
         self.assertEqual(f[0].severity, "warning")
         self.assertIn("command=", f[0].reason)
 
-    @owner_must_match
+    @files_owned_by_root
     def test_old_mtime_does_not_lower_and_recent_does_not_raise(self):
         path = "/home/bob/.ssh/authorized_keys"
         for ts in (NOW - 60, NOW - 8 * 365 * DAY):
