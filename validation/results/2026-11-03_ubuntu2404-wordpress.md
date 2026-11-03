@@ -103,3 +103,19 @@ FS-06 탐지 6건 (심각 5, 위험 1). 이후 `web-baseline` 스냅샷 복원.
 | FS-02 | SUID·SGID 21개: `chage` `chfn` `chsh` `crontab` `expiry` `fusermount3` `gpasswd` `mount` `newgrp` `passwd` `ssh-agent` `su` `sudo` `umount` `dbus-daemon-launch-helper` `auth_pam_tool`(MariaDB) `ssh-keysign` `polkit-agent-helper-1` `utempter` `pam_extrausers_chkpwd` `unix_chkpwd` | SUID·SGID 21개 (패키지 소속 21개), 이상 없음 | 일치 — 셸 탈출 프로그램 없음, MariaDB 설치로 생긴 `auth_pam_tool`도 패키지 소속으로 정상 처리 |
 
 Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 9개 항목 오탐 0 (FS-06 수정 후), 웹쉘 양성 확인 7개 모두 일치. 이후 `web-baseline` 복원.
+
+## LOG-01 정답 (2026-11-03, `web-baseline` 상태)
+
+- rsyslog 설정이 기록하는 파일 7개: `auth.log`, `syslog`(`-` 비동기), `kern.log`(`-`), `mail.log`(`-`), `mail.err`, `ufw.log`(`:msg,contains` 필터), `cloud-init.log`(`:syslogtag` 필터). `$IncludeConfig /etc/rsyslog.d/*.conf`
+- 실제 있는 파일: `auth.log` 16,547B, `syslog` 461,644B, `kern.log` 229,724B. `mail.*`은 없음 (메시지가 올 때 rsyslog가 만듦 — 정상)
+- 순환 파일 없음 (설치 직후라 `.1` 없음)
+- 웹 로그: `/var/log/nginx/access.log` 58,258B, `error.log` 969B. Apache 없음
+- 로그를 연 프로세스: rsyslogd(674) — syslog·kern.log·auth.log / nginx(766·767) — access.log·error.log / php-fpm(634) — `php8.3-fpm.log` / systemd-journald(285) — `system.journal`·`user-1000.journal` / unattended-upgrades(705)
+- 지워진 채 열린 로그: 없음
+- `auth.log`·`syslog` 첫 글자: `2026-11-03T01:37:19.443184+00:00` (24.04 형식, NUL 없음)
+- 기대: LOG-01 탐지 없음
+
+설계에 반영할 관찰:
+- 설정에 있지만 아직 없는 파일(`mail.*` 등)은 정상 → 탐지하지 않고 점검 범위에 개수만
+- 필터 줄(`:msg,contains,…`)과 비동기 표시(`-/var/log/…`)도 대상 경로로 읽어야 함
+- rsyslog·nginx 말고도 php-fpm·journald·unattended-upgrades가 `/var/log` 파일을 엶 — 지워진 채 열린 검사는 기록 프로세스 전체에 적용, journal(`/var/log/journal/`)은 LOG-04·05 영역이라 제외
