@@ -186,7 +186,7 @@
     "severity": "critical",
     "attack": "T1070.004",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-02",

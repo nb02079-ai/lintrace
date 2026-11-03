@@ -61,6 +61,53 @@ class TestPer05(FakeRootTest):
         self.assertTrue(f[0].evidence[-1].detail.startswith("파일 변경: "))
         self.assertEqual(check.scope, "preload 라이브러리 1개, 라이브러리 경로 4개")
 
+    def linsec_preload(self, maps=None):
+        """lin.security 7차 적용 재현: libdl.so.2(링크) + 없는 /tmp/.x/libhide.so"""
+        files = {"/etc/ld.so.preload": "/lib/x86_64-linux-gnu/libdl.so.2\n/tmp/.x/libhide.so\n",
+                 "/lib/x86_64-linux-gnu/libdl-2.27.so": "\x7fELF"}
+        if maps is not None:
+            files["/proc/self/maps"] = maps
+        root, check, _ = self.scan(files, modes={"/etc/ld.so.preload": 0o644,
+                                                 "/lib/x86_64-linux-gnu/libdl-2.27.so": 0o644})
+        os.symlink("libdl-2.27.so", os.path.join(root, "lib/x86_64-linux-gnu/libdl.so.2"))
+        check = Per05()
+        return check, check.run(Context(root, now=NOW))
+
+    @files_owned_by_root
+    def test_symlinked_library_shows_target(self):
+        _, f = self.linsec_preload()
+        self.assertEqual(f[0].evidence[0].detail,
+                         "1행: /lib/x86_64-linux-gnu/libdl.so.2 (있음, 링크 → libdl-2.27.so, 권한 644, 소유자 UID 0)")
+        self.assertEqual(f[0].evidence[1].detail, "2행: /tmp/.x/libhide.so (파일 없음)")
+
+    @files_owned_by_root
+    def test_warning_when_library_is_loaded_into_tool(self):
+        maps = ("55d0c0a00000-55d0c0a01000 r--p 00000000 08:01 1234 /usr/bin/python3.6\n"
+                "7f0000000000-7f0000002000 r-xp 00000000 08:01 5678 /lib/x86_64-linux-gnu/libdl-2.27.so\n"
+                "7ffd00000000-7ffd00021000 rw-p 00000000 00:00 0 [stack]\n")
+        check, f = self.linsec_preload(maps)
+        self.assertIn("이 도구에도 실제로 불려 들어감", f[0].evidence[0].detail)
+        self.assertEqual(len(check.report_warnings), 1)
+        self.assertIn("실제로 불려 들어간 상태로 실행", check.report_warnings[0])
+        self.assertIn("/lib/x86_64-linux-gnu/libdl.so.2", check.report_warnings[0])
+        self.assertIn("믿을 수 없습니다", check.report_warnings[0])
+
+    @files_owned_by_root
+    def test_warning_when_listed_but_not_loaded(self):
+        check, f = self.linsec_preload("7ffd00000000-7ffd00021000 rw-p 00000000 00:00 0 [stack]\n")
+        self.assertNotIn("실제로 불려 들어감", f[0].evidence[0].detail)
+        self.assertIn("실제로 불려 들어가지 않음", check.report_warnings[0])
+
+    @files_owned_by_root
+    def test_warning_when_maps_unknown(self):
+        check, _ = self.linsec_preload(None)  # /proc/self/maps가 없음
+        self.assertIn("확인하지 못했으므로", check.report_warnings[0])
+
+    @files_owned_by_root
+    def test_no_warning_without_preload(self):
+        _, check, _ = self.scan({})
+        self.assertIsNone(check.report_warnings)
+
     @files_owned_by_root
     def test_preload_from_hidden_temp_dir(self):
         _, _, f = self.scan({"/etc/ld.so.preload": "/tmp/.x/libhide.so\n/usr/lib/.c/liby.so\n"},

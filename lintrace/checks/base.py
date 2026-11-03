@@ -7,6 +7,7 @@
 Python 3.6 호환을 유지한다 (Ubuntu 18.04 기본 버전).
 dataclasses, `from __future__ import annotations`, `X | None`, `list[...]` 표기는 쓰지 않는다.
 """
+import hashlib
 import os
 import stat
 import time
@@ -95,9 +96,40 @@ class Context:
         except PermissionError:
             raise Unavailable("{} 접근 권한 없음 (root로 실행 필요)".format(p))
 
-    def readlink(self, p: str) -> Optional[str]:
+    def readlink(self, p: str, strict: bool = False) -> Optional[str]:
+        """링크 대상을 돌려준다. 없거나 링크가 아니면 None.
+
+        strict=True면 권한 오류를 Unavailable로 알린다 (남의 /proc/<pid>/exe 등).
+        """
         try:
             return os.readlink(self.path(p))
+        except PermissionError:
+            if strict:
+                raise Unavailable("{} 읽기 권한 없음 (root로 실행 필요)".format(p))
+            return None
+        except OSError:
+            return None
+
+    def realpath(self, p: str) -> str:
+        """링크를 모두 따라간 실제 경로 (점검 대상 루트 기준)."""
+        full = os.path.realpath(self.path(p))
+        root = os.path.realpath(self.root)
+        if root != "/" and (full == root or full.startswith(root + os.sep)):
+            full = full[len(root):] or "/"
+        return full
+
+    def sha256(self, p: str, max_bytes: int = 256 * 1024 * 1024) -> Optional[str]:
+        """일반 파일의 SHA-256. 읽을 수 없거나 너무 크면 None (진단을 멈추지 않는다)."""
+        full = self.path(p)
+        try:
+            st = os.stat(full)
+            if not stat.S_ISREG(st.st_mode) or st.st_size > max_bytes:
+                return None
+            h = hashlib.sha256()
+            with open(full, "rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    h.update(chunk)
+            return h.hexdigest()
         except OSError:
             return None
 
@@ -160,6 +192,10 @@ class Check:
     # run()이 끝나면 무엇을 확인했는지 한 줄로 남긴다 (예: "키 파일 1개, 키 0개").
     # '이상 없음'이 '볼 게 없었음'인지 '보고도 못 찾음'인지 리포트에서 구분하기 위해서다.
     scope = None
+
+    # 진단 결과 전체의 신뢰도에 영향을 주는 사실이 있으면 run()에서 문장 목록으로 남긴다.
+    # 리포트 맨 위 판정 줄 바로 아래에 표시된다 (예: 루트킷이 도구 자신에게 불려 들어감).
+    report_warnings = None
 
     def run(self, ctx: Context) -> List[Finding]:
         raise NotImplementedError

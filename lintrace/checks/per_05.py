@@ -95,17 +95,31 @@ class Per05(Check):
                 return None, 0  # 대상이 없는 링크: 동적 링커도 읽지 못한다
         entries = preload_entries(ctx.read_lines(PRELOAD))  # 일반 파일이 아니면 Unavailable
         critical, warning = [], []
+        mapped = self.self_mapped_paths(ctx)  # 이 도구 자신에게 불려 들어간 파일들 (모르면 None)
+        loaded = []
 
         for no, lib in entries:
-            lst = ctx.stat(lib, follow=True) if lib.startswith("/") else None
+            parts = []
             if not lib.startswith("/"):
-                state = "경로 없이 이름만 적힘"
-            elif lst is None:
-                state = "파일 없음"
+                parts.append("경로 없이 이름만 적힘")
             else:
-                state = "있음, " + describe_mode(lst)
-            evidence.append(Evidence(PRELOAD, "{}행: {} ({})".format(no, lib, state)))
+                link = ctx.stat(lib)
+                target = ctx.stat(lib, follow=True)
+                if target is None:
+                    parts.append("파일 없음")
+                else:
+                    parts.append("있음")
+                    if link is not None and stat.S_ISLNK(link.st_mode):
+                        # 정상 라이브러리 이름의 링크로 위장하는 경우가 있어 대상을 보여준다
+                        parts.append("링크 → {}".format(ctx.readlink(lib)))
+                    parts.append(describe_mode(target))
+                    if mapped is not None and (lib in mapped or ctx.realpath(lib) in mapped):
+                        loaded.append(lib)
+                        parts.append("이 도구에도 실제로 불려 들어감")
+            evidence.append(Evidence(PRELOAD, "{}행: {} ({})".format(no, lib, ", ".join(parts))))
+
         if entries:
+            self.report_warnings = [self.trust_warning(entries, loaded, mapped)]
             text = "모든 프로그램에 라이브러리 {}개가 강제로 불려 들어간다".format(len(entries))
             notes = []
             for _, lib in entries:
@@ -134,6 +148,30 @@ class Per05(Check):
             evidence=evidence,
             severity=severity,
         ), len(entries)
+
+    @staticmethod
+    def self_mapped_paths(ctx):
+        """이 도구 프로세스의 /proc/self/maps에 올라온 파일 경로. 읽을 수 없으면 None."""
+        if ctx.stat("/proc/self/maps", follow=True) is None:
+            return None
+        paths = set()
+        for line in ctx.read_lines("/proc/self/maps", missing_ok=True):
+            parts = line.split(None, 5)
+            if len(parts) == 6 and parts[5].startswith("/"):
+                paths.add(parts[5].replace(" (deleted)", ""))
+        return paths
+
+    @staticmethod
+    def trust_warning(entries, loaded, mapped):
+        if loaded:
+            return ("이 진단 도구에도 /etc/ld.so.preload의 라이브러리가 실제로 불려 들어간 상태로 실행되었습니다 "
+                    "({}). 루트킷이 도구의 결과를 숨겼을 수 있으므로 '이상 없음' 항목도 믿을 수 없습니다. "
+                    "다른 시스템에서 디스크를 분석하세요.".format(", ".join(loaded)))
+        if mapped is None:
+            return ("/etc/ld.so.preload에 라이브러리가 적혀 있습니다. 이 도구에 실제로 불려 들어갔는지 확인하지 "
+                    "못했으므로, 루트킷이 결과를 숨겼을 가능성을 염두에 두고 결과를 해석하세요.")
+        return ("/etc/ld.so.preload에 라이브러리가 적혀 있습니다 (이 도구에는 실제로 불려 들어가지 않음). "
+                "적힌 파일이 나중에 생기면 모든 프로그램에 불려 들어가므로 결과를 해석할 때 주의하세요.")
 
     def read_ld_conf(self, ctx):
         """ld.so.conf와 include된 파일에서 라이브러리 폴더를 모은다.

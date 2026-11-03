@@ -41,7 +41,7 @@ class TestRunner(FakeRootTest):
 
     def test_one_broken_check_does_not_stop_others(self):
         root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nb:x:0:0::/:/bin/sh\n"})
-        findings, unavailable, _ = run_checks(Context(root), [Broken] + list(ALL_CHECKS))
+        findings, unavailable, _, _ = run_checks(Context(root), [Broken] + list(ALL_CHECKS))
         self.assertEqual([f.check_id for f in findings], ["ACC-01"])
         self.assertEqual(unavailable[0][0], "TEST-99")
         self.assertIn("ValueError: 버그", unavailable[0][1])
@@ -49,10 +49,17 @@ class TestRunner(FakeRootTest):
     def test_fifo_in_place_of_file_does_not_hang(self):
         root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\n"})
         os.mkfifo(os.path.join(root, "etc", "sudoers"), 0o600)
-        findings, unavailable, _ = run_checks(Context(root), list(ALL_CHECKS))  # 멈추면 실패
+        findings, unavailable, _, _ = run_checks(Context(root), list(ALL_CHECKS))  # 멈추면 실패
         self.assertEqual(findings, [])
         self.assertEqual(unavailable[0][0], "ACC-06")
         self.assertIn("일반 파일이 아님", unavailable[0][1])
+
+    def test_report_warning_sits_right_under_verdict(self):
+        out = text.render([], ["PER-05"], [], {}, ["경고 문장"])
+        lines = out.splitlines()
+        self.assertEqual(lines[0], "전체 판정: 정상")
+        self.assertEqual(lines[1], "⚠ 경고 문장")
+        self.assertTrue(lines[2].startswith("실행한 점검 "))
 
     def test_clean_report_has_no_unavailable_section(self):
         out = text.render([], ["ACC-01"], [])
