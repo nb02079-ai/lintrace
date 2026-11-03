@@ -72,7 +72,7 @@ docs/            설계 문서
 
 ## 검증
 
-공개 취약 VM(lin.security, Metasploitable3)과 깨끗한 Ubuntu VM에 적용해 탐지율·오탐률을 측정합니다. 방법과 결과는 [validation/](validation/README.md)에 기록합니다.
+공개 취약 VM(lin.security)과 실제 웹 서버로 구성한 Ubuntu 24.04 VM(nginx + WordPress, 침투 시나리오 재현용)에 적용해 탐지율·오탐률을 측정합니다. 방법과 결과는 [validation/](validation/README.md)에 기록합니다.
 
 ## 문서
 
