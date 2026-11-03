@@ -321,7 +321,7 @@
     "severity": "critical",
     "attack": "T1548.001",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-03",
