@@ -15,15 +15,17 @@ def stat_line(pid, name, start_ticks):
     return "{} ({}) S ".format(pid, name) + " ".join(["1"] * 18) + " {}\n".format(start_ticks)
 
 
-def proc(pid, name, uid, ppid, cmdline, exe, start_ticks=360000):
-    """가짜 /proc/<pid>. exe는 링크 대상 문자열 그대로 (None이면 커널 스레드처럼 exe 없음)."""
+def proc(pid, name, uid, ppid, cmdline, exe, start_ticks=360000, cwd=None):
+    """가짜 /proc/<pid>. exe·cwd는 링크 대상 문자열 그대로 (exe가 None이면 커널 스레드처럼 exe 없음).
+
+    cmdline은 공백으로 인자를 나눈다 (실제 /proc에서는 NUL로 나뉨)."""
     files = {
         "/proc/{}/status".format(pid): "Name:\t{}\nPPid:\t{}\nUid:\t{}\t{}\t{}\t{}\n".format(name, ppid, uid, uid, uid, uid),
         "/proc/{}/cmdline".format(pid): cmdline.replace(" ", "\0"),
         "/proc/{}/comm".format(pid): name + "\n",
         "/proc/{}/stat".format(pid): stat_line(pid, name, start_ticks),
     }
-    return files, (pid, exe)
+    return files, (pid, exe, cwd)
 
 
 class TestHelpers(unittest.TestCase):
@@ -34,20 +36,24 @@ class TestHelpers(unittest.TestCase):
 
 
 class LinkContext(Context):
-    """권한 거부를 흉내 낼 PID를 지정할 수 있는 Context (root는 디렉터리 권한을 무시하므로)."""
+    """권한 거부를 흉내 낼 PID를 지정할 수 있는 Context (root는 디렉터리 권한을 무시하므로).
+    exe 링크를 몇 번 읽었는지도 센다 (수집기가 /proc를 한 번만 훑는지 확인용)."""
 
     def __init__(self, root, now, deny=()):
         Context.__init__(self, root, now)
         self.deny = set(deny)
+        self.exe_reads = 0
 
     def readlink(self, p, strict=False):
         pid = p.split("/")[2] if p.startswith("/proc/") else None
+        if p.endswith("/exe"):
+            self.exe_reads += 1
         if strict and pid in self.deny:
             raise Unavailable("{} 읽기 권한 없음".format(p))
         return Context.readlink(self, p, strict)
 
 
-class TestPrc01(FakeRootTest):
+class ProcRootTest(FakeRootTest):
     def build(self, procs, extra=None):
         files = {"/proc/stat": "cpu  1 2 3\nbtime {}\n".format(BTIME),
                  "/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nbob:x:1000:1000::/home/bob:/bin/bash\n"
@@ -58,15 +64,23 @@ class TestPrc01(FakeRootTest):
             links.append(link)
         files.update(extra or {})
         root = self.make_root(files)
-        for pid, exe in links:
+        for pid, exe, cwd in links:
             if exe is not None:
                 os.symlink(exe, os.path.join(root, "proc", str(pid), "exe"))
+            if cwd is not None:
+                os.symlink(cwd, os.path.join(root, "proc", str(pid), "cwd"))
         return root
+
+    check_class = None
 
     def scan(self, procs, extra=None, deny=()):
         root = self.build(procs, extra)
-        check = Prc01()
+        check = self.check_class()
         return check, check.run(LinkContext(root, NOW, deny))
+
+
+class TestPrc01(ProcRootTest):
+    check_class = Prc01
 
     def test_normal_processes(self):
         check, f = self.scan([proc(1, "systemd", 0, 0, "/sbin/init", "/usr/lib/systemd/systemd"),

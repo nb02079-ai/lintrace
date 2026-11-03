@@ -6,7 +6,7 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 52개 항목을 점검하
 
 ## 상태
 
-1단계(MVP) 진행 중 — 구현 6 / 52 (ACC-01, ACC-06, ACC-07, PER-01, PER-05, PRC-01 · `python3 -m lintrace --list`로 확인)
+1단계(MVP) 진행 중 — 구현 7 / 52 (ACC-01, ACC-06, ACC-07, PER-01, PER-05, PRC-01, PRC-03 · `python3 -m lintrace --list`로 확인)
 
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ root가 아니면 읽지 못하는 파일이 있어 해당 항목은 리포트�
 ```
 lintrace/
   checks/        점검 항목 (항목 하나 = 파일 하나, base.py가 공통 틀)
-  collectors/    여러 항목이 공유하는 수집기 (2단계부터)
+  collectors/    여러 항목이 공유하는 수집기 (processes: /proc 프로세스 표를 한 번만 읽어 PRC 계열이 함께 씀)
   report/        리포트 출력 (1단계 텍스트 → 3단계 HTML)
 rules/catalog.json   52개 항목 목록 (ID, 위험도, ATT&CK, 구현 단계)
 tests/           항목별 단위 테스트와 가짜 파일시스템 fixture
@@ -67,7 +67,8 @@ docs/            설계 문서
 5. Python 3.6 호환을 지킨다 (dataclasses, `X | None`, `list[...]` 표기 금지).
 6. 변경 시각은 위험도 조건에 쓰지 않는다. 근거에 `timefmt.describe(st.st_mtime, ctx.now)`로 표시만 한다.
 7. `run()` 끝에 `self.scope`로 확인 범위를 남긴다 (예: `"키 파일 {}개, 키 {}개"`). 결과 전체의 신뢰도에 관한 사실은 `self.report_warnings`에 문장으로 남긴다.
-8. 파일 존재 확인은 `os.path.exists()` 대신 `ctx.stat()`을 쓴다. 상위 디렉터리 권한이 없을 때 "없음"과 "못 봄"을 구분하기 위해서다. (`ctx.read_lines()`는 FIFO 등 일반 파일이 아닌 것을 열지 않는다.)
+8. 프로세스 정보는 `/proc`를 직접 훑지 말고 `collectors.processes.processes(ctx)`를 쓴다. 항목마다 따로 읽으면 그사이 프로세스가 생기거나 끝나 결과가 엇갈린다.
+9. 파일 존재 확인은 `os.path.exists()` 대신 `ctx.stat()`을 쓴다. 상위 디렉터리 권한이 없을 때 "없음"과 "못 봄"을 구분하기 위해서다. (`ctx.read_lines()`는 FIFO 등 일반 파일이 아닌 것을 열지 않는다.)
 
 ## 검증
 
