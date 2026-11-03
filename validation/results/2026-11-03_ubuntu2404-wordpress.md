@@ -71,3 +71,21 @@ WordPress 구조에 심은 웹쉘 3개(업로드 폴더 `s.php`, 업로드 폴�
 | FS-06 | 웹 루트 1개 (/var/www), 스크립트·이미지 파일 1,738개 | 이상 없음 (1차 39건 → 0건) |
 
 실제 웹 서버(nginx + php-fpm + MariaDB + WordPress)에서 9개 항목 오탐 0. 정답 자료(`truth.txt`) 대조는 대기.
+
+## 3차 적용 — FS-06 양성 확인 (WordPress 구조에 웹쉘 심기)
+
+`www-data`로 업로드 폴더·가짜 플러그인·코어 폴더 위장 파일을 만들고, 정상 테마 `functions.php` 끝에 한 줄을 덧붙인 뒤 실행.
+
+| 파일 | 기대 | 결과 |
+| --- | --- | --- |
+| `wp-content/uploads/2026/11/cache.php` (`@eval($_POST[..])`) | 심각 (요청 값 → 실행; 업로드 폴더) | 일치 |
+| `wp-content/uploads/2026/11/avatar.jpg` (GIF 헤더 + PHP) | 심각 (이미지 속 PHP) | 일치 |
+| `wp-content/plugins/hello-x/hello-x.php` (백틱 실행) | 심각, 근거 5행 | 탐지 (출력 앞부분이 잘려 근거 줄은 미확인) |
+| `wp-includes/class-wp-cache-helper.php` (`eval(gzinflate(base64_decode(..)))`) | 심각 (인코딩 풀어 실행) | 일치 |
+| `wp-content/themes/twentytwentyfive/functions.php` 끝에 `$_GET["f"]($_GET["c"]);` | 심각 | 일치, 근거 160행 (정상 코드 159줄 뒤에 끼운 한 줄을 찾음) |
+| `wp-content/uploads/2026/11/info.php` (`phpinfo()`) | 위험 (업로드 폴더 안 스크립트) | 일치 |
+| `wp-content/uploads/2026/11/index.php` (Silence is golden) | 탐지 없음 | 일치 |
+| 점검 범위 "스크립트·이미지 파일 1744개" (1,738 + 새 파일 6) | | 일치 |
+| 다른 8개 항목 | 변화 없음 | 일치 |
+
+FS-06 탐지 6건 (심각 5, 위험 1). 이후 `web-baseline` 스냅샷 복원.
