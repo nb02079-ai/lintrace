@@ -119,3 +119,18 @@ Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 
 - 설정에 있지만 아직 없는 파일(`mail.*` 등)은 정상 → 탐지하지 않고 점검 범위에 개수만
 - 필터 줄(`:msg,contains,…`)과 비동기 표시(`-/var/log/…`)도 대상 경로로 읽어야 함
 - rsyslog·nginx 말고도 php-fpm·journald·unattended-upgrades가 `/var/log` 파일을 엶 — 지워진 채 열린 검사는 기록 프로세스 전체에 적용, journal(`/var/log/journal/`)은 LOG-04·05 영역이라 제외
+
+## 4차 적용 — LOG-01 (커밋 4ace10c, 코드 해시 6315b457…)
+
+- 단위 테스트 151개 통과 (root 6개 건너뜀), 실행한 점검 10개, 전체 판정 정상
+- LOG-01 탐지 없음: "rsyslog 대상 7개, 웹 로그 2개, 그중 있는 파일 6개 (나머지 3개는 아직 만들어지지 않음), 로그를 연 프로세스 6개" (정답 때 5개 → 그사이 설정 파일 하나가 새로 생김)
+
+양성 확인: `sudo sed -i '/GET/d' /var/log/nginx/access.log`
+
+| 기대 | 결과 |
+| --- | --- |
+| LOG-01 심각, nginx 프로세스 2개 | 일치 — master(PID 743, root)·worker(PID 745, www-data) 모두 fd 4로 지워진 원래 파일을 붙잡음 |
+| 원래·지금 크기 비교 | 원래 inode 134774·58,258B → 지금 inode 139920·6,517B (GET 요청 줄 삭제분 51,741B) |
+| 다른 9개 항목 변화 없음 | 일치 |
+
+이후 `web-baseline` 복원.
