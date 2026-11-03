@@ -89,3 +89,17 @@ WordPress 구조에 심은 웹쉘 3개(업로드 폴더 `s.php`, 업로드 폴�
 | 다른 8개 항목 | 변화 없음 | 일치 |
 
 FS-06 탐지 6건 (심각 5, 위험 1). 이후 `web-baseline` 스냅샷 복원.
+
+## 정답 자료 대조 (`truth.txt`, 3차 적용 직후 같은 상태에서 수집)
+
+| 항목 | 정답 자료 | 도구 점검 범위 | 대조 |
+| --- | --- | --- | --- |
+| ACC-01 | UID 0은 `root`만 | 계정 36개, 이상 없음 | 일치 |
+| ACC-06 | 규칙 `root`, `%admin`, `%sudo` 3개 (모두 기본 관리자 규칙), `@includedir /etc/sudoers.d` | sudoers 파일 2개, 사용자 규칙 3개, 이상 없음 | 일치 |
+| ACC-07 | `/home/test/.ssh/authorized_keys`, `/root/.ssh/authorized_keys` — 둘 다 0바이트, 600, 소유자 본인. 그 밖에 man 페이지 심볼릭 링크 1개 | 키 파일 2개, 키 0개, 이상 없음 | 일치 (man 페이지 링크는 키 파일이 아니라 제외) |
+| PER-01 | `/etc/crontab` run-parts 4줄, `cron.d`의 `e2scrub_all`·`php`·`sysstat`, 사용자 crontab 없음 | 예약 작업 9개, 이상 없음 | 탐지 없음 일치 (9개는 cron.d 파일 안 여러 줄 포함) |
+| PER-05 | `/etc/ld.so.preload` 없음 | preload 없음, 이상 없음 | 일치 |
+| PRC-01·PRC-03 | 지워진 실행 파일·임시 폴더 실행 프로세스 없음 | 프로세스 107개, 이상 없음 | 일치 |
+| FS-02 | SUID·SGID 21개: `chage` `chfn` `chsh` `crontab` `expiry` `fusermount3` `gpasswd` `mount` `newgrp` `passwd` `ssh-agent` `su` `sudo` `umount` `dbus-daemon-launch-helper` `auth_pam_tool`(MariaDB) `ssh-keysign` `polkit-agent-helper-1` `utempter` `pam_extrausers_chkpwd` `unix_chkpwd` | SUID·SGID 21개 (패키지 소속 21개), 이상 없음 | 일치 — 셸 탈출 프로그램 없음, MariaDB 설치로 생긴 `auth_pam_tool`도 패키지 소속으로 정상 처리 |
+
+Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 9개 항목 오탐 0 (FS-06 수정 후), 웹쉘 양성 확인 7개 모두 일치. 이후 `web-baseline` 복원.
