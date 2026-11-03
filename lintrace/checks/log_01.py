@@ -14,9 +14,9 @@
 판정
 - 심각: 프로세스가 현재 로그 이름의 파일을 지워진 채 붙잡고 있음 (내용 바꿔 다시 저장, 또는 삭제)
 - 심각: 로그 앞부분이 NUL(0 바이트)로 채워짐 — 쓰는 중인 파일을 비우면 다음 기록이 예전 위치에 써진다
-- 심각: 인증 로그(auth.log)가 비었는데 도구를 sudo로 실행함 — sudo가 방금 남긴 기록이 있어야 한다
-        (rsyslog가 늦게 쓸 수 있어 RECHECK_SECONDS 뒤 다시 확인)
 - 위험: 계속 기록되는 로그(인증·전체 로그, 웹 access 로그)가 비어 있음 — 순환 직후에도 생길 수 있음
+        (sudo로 실행했으면 auth.log에 방금 기록이 남았어야 하지만, 'sudo -i' 셸 안에서 실행하면
+         그 기록이 순환 전 파일에 있을 수 있어 심각으로 올리지 않는다 — 2026-11-03 결정)
 - 위험: 순환 사슬이 끊김 (.2.gz는 있는데 .1이 없음), 또는 현재 파일 없이 순환 파일만 있음
 
 정상으로 보는 것
@@ -27,11 +27,9 @@
 시각은 판정에 쓰지 않고, 로그 내용의 시각도 해석하지 않는다 (18.04·24.04 형식 차이와 무관).
 """
 import fnmatch
-import os
 import posixpath
 import re
 import stat
-import time
 
 from .. import timefmt
 from ..collectors.processes import DELETED, describe, processes
@@ -182,8 +180,6 @@ class Log01(Check):
     severity = "critical"
     attack = "T1070.002"
 
-    RECHECK_SECONDS = 2  # 테스트에서 0으로 바꾼다
-
     def run(self, ctx: Context):
         table = processes(ctx)
         table.require_access()
@@ -285,22 +281,6 @@ class Log01(Check):
             )
         if st.st_size != 0 or target.kind is None:
             return None
-        # 실제 시스템을 점검할 때만 도구의 실행 환경을 본다 (테스트는 ctx.env로 넣는다)
-        env = getattr(ctx, "env", None)
-        if env is None:
-            env = os.environ if ctx.root == "/" else {}
-        if target.kind == "auth" and env.get("SUDO_USER"):
-            if self.RECHECK_SECONDS:
-                time.sleep(self.RECHECK_SECONDS)
-            again = ctx.stat(path, follow=True)
-            if again is not None and again.st_size == 0:
-                return self.finding(
-                    reason="{}: 인증 로그가 비어 있다 — 도구를 sudo({})로 실행해 방금 기록이 남았어야 한다".format(
-                        path, env.get("SUDO_USER")),
-                    next_steps="rsyslog가 이 파일에 쓰고 있는지(LOG-04), 다른 곳으로 보내도록 설정이 바뀌었는지 확인한다. "
-                               "비우기 전 기록은 순환 파일(.1)이나 journal('journalctl _COMM=sudo')에서 찾는다.",
-                    evidence=self.size_evidence(ctx, path, st),
-                )
         label = {"auth": "인증 로그", "all": "전체 로그", "web": "웹 접근 로그"}[target.kind]
         return self.finding(
             reason="{}: 계속 기록되는 {}가 비어 있다 (순환 직후가 아니라면 비운 흔적)".format(path, label),

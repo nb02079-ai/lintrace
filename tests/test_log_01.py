@@ -89,16 +89,14 @@ class TestRsyslogParse(FakeRootTest):
 class TestLog01(ProcRootTest):
     check_class = Log01
 
-    def run_check(self, files, procs=(RSYSLOGD,), fds=None, env=None):
+    def run_check(self, files, procs=(RSYSLOGD,), fds=None):
         root = self.build(list(procs), files)
         for pid, table in (RSYSLOG_FDS if fds is None else fds).items():
             os.makedirs(os.path.join(root, "proc", str(pid), "fd"), exist_ok=True)
             for fd, target in table.items():
                 os.symlink(target, os.path.join(root, "proc", str(pid), "fd", fd))
         ctx = LinkContext(root, NOW)
-        ctx.env = env or {}
         check = Log01()
-        check.RECHECK_SECONDS = 0
         return check, check.run(ctx)
 
     def test_linsecurity_clean(self):
@@ -161,18 +159,13 @@ class TestLog01(ProcRootTest):
         self.assertIn("앞부분 500바이트가 NUL", f[0].reason)
         self.assertIn("이어지는 첫 줄: Nov  3 03:10:01 linsecurity CRON", f[0].evidence[0].detail)
 
-    def test_empty_auth_log_with_sudo(self):
-        _, f = self.run_check(logs(**{"/var/log/auth.log": ""}), env={"SUDO_USER": "bob"})
-        self.assertEqual(f[0].severity, "critical")
-        self.assertIn("sudo(bob)", f[0].reason)
-
-    def test_empty_logs_without_sudo(self):
+    def test_empty_logs(self):
         files = logs(**{"/var/log/auth.log": "", "/var/log/kern.log": "", "/var/log/mail.err": "",
                         "/etc/nginx/nginx.conf": NGINX_CONF, "/var/log/nginx/access.log": "",
                         "/var/log/nginx/error.log": ""})
         _, f = self.run_check(files)
         got = {x.reason.split(":")[0]: x.severity for x in f}
-        # 커널·메일·오류 로그는 조용한 서버에서 비어도 정상
+        # 커널·메일·오류 로그는 조용한 서버에서 비어도 정상. 인증 로그도 순환 직후일 수 있어 위험까지만
         self.assertEqual(got, {"/var/log/auth.log": "warning", "/var/log/nginx/access.log": "warning"})
 
     def test_broken_rotation_chain(self):
@@ -195,14 +188,18 @@ class TestLog01(ProcRootTest):
         self.assertEqual(f, [])
         self.assertEqual(check.scope, "rsyslog 없음 (journald만), 웹 로그 0개, 로그를 연 프로세스 0개")
 
-    def test_fake_root_ignores_real_sudo_environment(self):
-        # 테스트를 sudo로 돌려도 가짜 루트 점검에는 도구 자신의 SUDO_USER를 쓰지 않는다
-        root = self.build([RSYSLOGD], logs(**{"/var/log/auth.log": ""}))
-        check = Log01()
-        check.RECHECK_SECONDS = 0
-        f = check.run(LinkContext(root, NOW))
-        self.assertEqual([x.severity for x in f], ["warning"])
-
+    def test_empty_auth_log_is_warning_even_under_sudo(self):
+        # 'sudo -i' 셸 안에서 실행하면 SUDO_USER가 남아 있어도 sudo 기록은 순환 전 파일에 있을 수 있다
+        old = os.environ.get("SUDO_USER")
+        os.environ["SUDO_USER"] = "bob"
+        try:
+            _, f = self.run_check(logs(**{"/var/log/auth.log": ""}))
+        finally:
+            if old is None:
+                del os.environ["SUDO_USER"]
+            else:
+                os.environ["SUDO_USER"] = old
+        self.assertEqual([(x.reason.split(":")[0], x.severity) for x in f], [("/var/log/auth.log", "warning")])
 
 if __name__ == "__main__":
     unittest.main()
