@@ -10,8 +10,12 @@
 - 심각: 요청 값이 실행 함수로 바로 들어감 (eval($_POST[..]), system($_GET[..]), $_GET['f']($_GET['c']))
 - 심각: 인코딩을 풀어 바로 실행 (eval(base64_decode(..)), eval(gzinflate(..)))
 - 심각: 이미지 확장자 파일 안에 PHP 코드 (업로드 검사 우회)
-- 위험: 업로드 폴더(uploads, images 등) 안의 스크립트 — 주석뿐인 빈 index.php는 제외
+- 위험: 업로드 폴더(uploads, upload, user_files, attachments) 안의 스크립트 — 주석뿐인 빈 index.php는 제외
 - 위험: 실행 함수 없이 긴 인코딩 문자열을 푸는 코드만 있음 (난독화)
+
+PHP 파일은 실제로 실행되는 코드 부분만 본다. PHP 태그 밖(HTML)과 주석은 공백으로 지우고
+(줄 번호 유지), 백틱은 문자열 밖에 있는 진짜 셸 실행 구간만 본다. WordPress 코어의 문서 주석
+(`$_POST` 같은 마크다운 표기)과 SQL 문자열 속 백틱이 웹쉘로 잡히던 오탐을 막기 위해서다.
 
 알려진 한계: 패턴 기반이라 새로 난독화된 웹쉘은 놓칠 수 있다. 실제 웹 애플리케이션의
 오탐 수준은 WordPress를 설치한 Ubuntu VM에서 측정한다 (validation/README.md).
@@ -27,7 +31,10 @@ from .base import Check, Context, Evidence, Unavailable
 SCRIPT_EXT = {".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".phar", ".inc",
               ".jsp", ".jspx", ".asp", ".aspx", ".cgi", ".pl", ".py"}
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".webp", ".tif", ".tiff"}
-UPLOAD_DIRS = {"uploads", "upload", "images", "image", "img", "files", "media", "attachments", "user_files"}
+PHP_EXT = {".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".php8", ".phar", ".inc"}
+# images·media·files는 라이브러리 코드 폴더 이름으로도 흔해(src/Files, block-library/image) 넣지 않는다.
+# 소문자 그대로만 비교한다.
+UPLOAD_DIRS = {"uploads", "upload", "user_files", "attachments"}
 MAX_BYTES = 2 * 1024 * 1024
 NGINX_CONF = ["/etc/nginx/nginx.conf", "/etc/nginx/conf.d", "/etc/nginx/sites-enabled"]
 APACHE_CONF = ["/etc/apache2/apache2.conf", "/etc/apache2/sites-enabled", "/etc/apache2/conf-enabled"]
@@ -39,13 +46,26 @@ DECODE = r"(?:base64_decode|gzinflate|gzuncompress|gzdecode|str_rot13|strrev|hex
 
 REQ_TO_EXEC = [
     re.compile(EXEC + r"\s*\(\s*[^;]{0,200}?" + REQUEST, re.I),
-    re.compile(r"`[^`;]{0,200}" + REQUEST),                                         # `$_GET[c]`
+    re.compile(r"`[^`;]{0,200}" + REQUEST),            # `$_GET[c]` — PHP 파일은 대신 백틱 구간으로 본다
     re.compile(r"\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]{1,40}\]\s*\(", re.I),      # $_GET['f'](...)
     re.compile(r"preg_replace\s*\(\s*['\"]([^\w\s])[^'\"]*\1[a-zA-Z]*e[a-zA-Z]*['\"]"),  # /e 수정자
 ]
 DECODE_EXEC = re.compile(r"(?<![\w>:$])(?:eval|assert)\s*\(\s*@?\s*" + DECODE + r"\s*\(", re.I)
 LONG_DECODE = re.compile(DECODE + r"\s*\(\s*['\"][A-Za-z0-9+/=\\]{200,}['\"]", re.I)
-PHP_OPEN = re.compile(rb"<\?(?:php|=)", re.I)
+# 이미지 바이너리에 우연히 '<?='가 나오는 경우가 있어(테마 screenshot.png) 뒤 글자까지 본다
+IMAGE_PHP = re.compile(rb"<\?php[\s(]|<\?=\s*[$@(]", re.I)
+PHP_OPEN_TAG = re.compile(r"<\?(?:php\b|=|(?=\s))", re.I)
+PHP_TOKEN = re.compile(r"\?>|['\"`#]|/[/*]|<<<")
+STRING = {"'": re.compile(r"'(?:[^'\\]|\\.)*'?", re.S), '"': re.compile(r'"(?:[^"\\]|\\.)*"?', re.S)}
+REQUEST_RE = re.compile(REQUEST)
+# 아래 규칙은 모두 요청 값·디코딩 함수·preg_replace 중 하나가 있어야 걸리므로, 없는 파일은 해석을 건너뛴다
+# (소문자로 바꾼 글에서 문자열 포함 여부만 보는 빠른 걸러내기 — 정규식 검사보다 수십 배 빠르다)
+QUICK_WORDS = ("$_get", "$_post", "$_request", "$_cookie", "$_server", "$_files", "php://input", "getallheaders",
+               "base64_decode", "gzinflate", "gzuncompress", "gzdecode", "str_rot13", "strrev", "hex2bin",
+               "convert_uudecode", "preg_replace")
+NOT_NEWLINE = re.compile(r"[^\n]")
+LINE_COMMENT_END = re.compile(r"\n|\?>|\Z")
+HEREDOC = re.compile(r"<<<[ \t]*(['\"]?)([A-Za-z_]\w*)\1")
 PHP_COMMENTS = re.compile(r"/\*.*?\*/|//[^\n]*|#[^\n]*", re.S)
 
 
@@ -58,6 +78,64 @@ def is_empty_php(text):
     body = PHP_COMMENTS.sub("", text)
     body = re.sub(r"<\?php|<\?=|<\?|\?>", "", body, flags=re.I)
     return not body.strip()
+
+
+def php_code(text):
+    """PHP 코드 부분만 남긴 글과 백틱(셸 실행) 구간 목록.
+
+    태그 밖 HTML과 주석은 공백으로 바꾸고 줄바꿈은 남겨, 위치와 줄 번호가 원문과 같다.
+    문자열·heredoc은 그대로 두되 그 안의 백틱·주석 기호는 건너뛴다. '#['는 PHP 8 속성이라 주석이 아니다.
+    """
+    out = list(text)
+    n = len(text)
+    ticks = []
+
+    def blank(a, b):
+        out[a:b] = NOT_NEWLINE.sub(" ", text[a:b])
+
+    i = 0
+    while i < n:
+        m = PHP_OPEN_TAG.search(text, i)
+        if not m:
+            blank(i, n)
+            break
+        blank(i, m.start())
+        i = m.end()
+        while i < n:
+            t = PHP_TOKEN.search(text, i)
+            if not t:
+                i = n
+                break
+            i, tok = t.start(), t.group()
+            if tok == "?>":
+                i += 2
+                break
+            if tok in ("'", '"'):
+                i = STRING[tok].match(text, i).end()
+            elif tok == "`":
+                k = text.find("`", i + 1)
+                k = n - 1 if k < 0 else k
+                ticks.append((i, k + 1))
+                i = k + 1
+            elif tok == "/*":
+                k = text.find("*/", i + 2)
+                k = n if k < 0 else k + 2
+                blank(i, k)
+                i = k
+            elif tok == "#" and text.startswith("#[", i):
+                i += 2
+            elif tok in ("//", "#"):
+                k = LINE_COMMENT_END.search(text, i).start()  # 줄 끝이나 '?>'에서 끝난다
+                blank(i, k)
+                i = k
+            else:  # <<<
+                h = HEREDOC.match(text, i)
+                if not h:
+                    i += 3
+                    continue
+                e = re.compile(r"^[ \t]*" + h.group(2) + r"\b", re.M).search(text, h.end())
+                i = e.end() if e else n
+    return "".join(out), ticks
 
 
 def snippet(text, start, end):
@@ -167,30 +245,47 @@ class Fs06(Check):
         critical, warning, hits = [], [], []
 
         if ext in IMAGE_EXT:
-            m = PHP_OPEN.search(data)
+            m = IMAGE_PHP.search(data)
             if m:
                 critical.append("이미지 확장자 파일 안에 PHP 코드가 있다 (업로드 검사 우회)")
                 text = data.decode("utf-8", "replace")
                 hits.append(self.hit(text, m.start(), m.end() + 40))
         else:
             text = data.decode("utf-8", "replace")
-            for pattern in REQ_TO_EXEC:
-                m = pattern.search(text)
+            lower = text.lower()
+            if not any(w in lower for w in QUICK_WORDS):
+                code, ticks, patterns = "", [], []
+            elif ext in PHP_EXT:
+                # 위치가 원문과 같으므로 검사는 code로, 근거는 원문(text)으로 보여준다
+                code, ticks = php_code(text)
+                patterns = [p for k, p in enumerate(REQ_TO_EXEC) if k != 1]
+            else:
+                code, ticks, patterns = text, [], REQ_TO_EXEC
+            req = None
+            for pattern in patterns:
+                m = pattern.search(code)
                 if m:
-                    critical.append("요청 값이 실행 함수로 바로 들어간다")
-                    hits.append(self.hit(text, m.start(), m.end()))
+                    req = (m.start(), m.end())
                     break
-            m = DECODE_EXEC.search(text)
+            if req is None:
+                for a, b in ticks:
+                    if REQUEST_RE.search(code, a, b):
+                        req = (a, b)
+                        break
+            if req:
+                critical.append("요청 값이 실행 함수로 바로 들어간다")
+                hits.append(self.hit(text, *req))
+            m = DECODE_EXEC.search(code)
             if m:
                 critical.append("인코딩을 풀어 바로 실행한다")
                 hits.append(self.hit(text, m.start(), m.end()))
             if not critical:
-                m = LONG_DECODE.search(text)
+                m = LONG_DECODE.search(code)
                 if m:
                     warning.append("긴 인코딩 문자열을 풀어 쓰는 코드가 있다 (난독화)")
                     hits.append(self.hit(text, m.start(), m.end()))
             parts = path.split("/")[:-1]
-            if any(p.lower() in UPLOAD_DIRS for p in parts) and not (ext.startswith(".php") and is_empty_php(text)):
+            if any(p in UPLOAD_DIRS for p in parts) and not (ext in PHP_EXT and is_empty_php(text)):
                 warning.append("업로드 폴더 안에 스크립트 파일이 있다")
 
         if not critical and not warning:

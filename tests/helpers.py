@@ -26,6 +26,10 @@ class FakeRootTest(unittest.TestCase):
                 os.makedirs(full, exist_ok=True)
                 continue
             os.makedirs(os.path.dirname(full), exist_ok=True)
+            if isinstance(content, bytes):  # 바이너리 파일 (이미지 등)
+                with open(full, "wb") as f:
+                    f.write(content)
+                continue
             with open(full, "w", encoding="utf-8") as f:
                 f.write(content)
         return root

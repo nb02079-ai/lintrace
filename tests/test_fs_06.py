@@ -2,7 +2,7 @@ import os
 import unittest
 
 from lintrace.checks.base import Context, Unavailable
-from lintrace.checks.fs_06 import Fs06, is_empty_php, snippet
+from lintrace.checks.fs_06 import Fs06, is_empty_php, php_code, snippet
 
 from helpers import FakeRootTest
 
@@ -21,6 +21,32 @@ class TestHelpers(unittest.TestCase):
         s = snippet(text, 6, len(text))
         self.assertIn("…", s)
         self.assertLessEqual(len(s), 141)
+
+
+class TestPhpCode(unittest.TestCase):
+    def test_comments_and_html_are_blanked_keeping_positions(self):
+        text = "<h1>$_GET</h1>\n<?php // `$_POST`\n/* `$_GET`\n */ $a = 1; # x\n#[Attr] f(); ?>\n<p>`$_GET`</p>"
+        code, ticks = php_code(text)
+        self.assertEqual(len(code), len(text))
+        self.assertEqual(code.count("\n"), text.count("\n"))
+        self.assertNotIn("$_", code)
+        self.assertIn("$a = 1;", code)
+        self.assertIn("#[Attr] f();", code)  # PHP 8 속성은 주석이 아니다
+        self.assertEqual(ticks, [])
+
+    def test_backticks_inside_strings_and_heredoc_are_not_shell(self):
+        text = ("<?php $q = \"SELECT `id` FROM `t` WHERE a='\" . $_GET['a'] . \"'\";\n"
+                "$s = 'it\\'s `x`'; $h = <<<EOT\n`$_GET[c]` // not a comment\nEOT;\n$r = `ls $_GET[d]`;")
+        code, ticks = php_code(text)
+        self.assertEqual(len(ticks), 1)
+        a, b = ticks[0]
+        self.assertEqual(text[a:b], "`ls $_GET[d]`")
+        self.assertIn("// not a comment", code)  # heredoc 안은 그대로
+
+    def test_comment_ends_at_close_tag(self):
+        code, _ = php_code("<?php // c ?> html <?php system($_GET['c']);")
+        self.assertIn("system($_GET['c'])", code)
+        self.assertNotIn("html", code)
 
 
 class TestFs06(FakeRootTest):
@@ -83,6 +109,51 @@ class TestFs06(FakeRootTest):
             w + "style.css": "body { color: red } /* $_GET eval( */",  # 대상 확장자가 아님
         })
         self.assertEqual(f, [])
+
+    def test_wordpress_core_like_code_is_not_flagged(self):
+        """Ubuntu 24.04 + WordPress 1차 기준선에서 나온 오탐 39건의 세 가지 원인"""
+        w = "/var/www/wordpress/"
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20 + b"<?=\x9b\xcf\xce\x9e" + b"\xff" * 20
+        _, f = self.scan({
+            w + "wp-includes/pluggable.php":
+                "<?php\n/**\n * @param string $query_arg Optional. Key to check for nonce in `$_REQUEST`.\n */\n"
+                "function check_admin_referer( $action = -1, $query_arg = '_wpnonce' ) {}\n",
+            w + "wp-includes/vars.php":
+                "<?php\n// For `Options +Multiviews`: /wp-admin/themes/index.php\n"
+                "if ( preg_match( '#([^/]+\\.php)([?/].*?)?$#i', $_SERVER['PHP_SELF'], $m ) ) {}\n",
+            w + "wp-includes/class-wpdb.php":
+                "<?php\n$wpdb->prepare( 'WHERE `%1$s` = \"%2$s\"', $_GET['key'], $_GET['value'] );\n",
+            w + "wp-content/themes/t/screenshot.png": png,
+            w + "wp-includes/php-ai-client/src/Files/DTO/File.php": "<?php\nclass File {}\n",
+            w + "wp-includes/js/dist/block-library/image/view.min.asset.php": "<?php return array('version' => '1');",
+        })
+        self.assertEqual(f, [])
+
+    def test_shells_hidden_after_comments_or_in_html(self):
+        w = "/var/www/"
+        _, f = self.scan({
+            w + "a.php": '<?php // harmless\n/* doc `$_GET` */ $u = "http://x"; system($_GET["c"]); ?>',
+            w + "b.php": "<html><?= `$_GET[c]` ?></html>",
+            w + "c.php": "<?php\n$x = <<<EOT\n`$_GET` in heredoc\nEOT;\n#[Attr]\nassert($_POST['a']);\n",
+            w + "d.php": "<?php echo `{$_REQUEST['cmd']}`; ?>",
+        })
+        r = self.reasons(f)
+        self.assertEqual(sorted(r), [w + n for n in ("a.php", "b.php", "c.php", "d.php")])
+        self.assertTrue(all(v == ("critical", "요청 값이 실행 함수로 바로 들어간다") for v in r.values()))
+        c = [x for x in f if x.evidence[0].source.endswith("c.php")][0]
+        self.assertTrue(c.evidence[0].detail.startswith("6행: "))  # 지운 주석·heredoc 뒤에도 줄 번호 유지
+
+    def test_php_file_without_php_tag_is_not_code(self):
+        _, f = self.scan({"/var/www/readme.php": "<p>use system($_GET['c']) carefully</p>"})
+        self.assertEqual(f, [])
+
+    def test_upload_folder_names_are_exact(self):
+        _, f = self.scan({
+            "/var/www/app/Uploads/Handler.php": "<?php class Handler {}",   # 대소문자가 다른 코드 폴더
+            "/var/www/app/images/x.php": "<?php echo 1;",                   # 목록에서 뺀 이름
+            "/var/www/wp-content/uploads/2026/11/x.php": "<?php echo 1;",
+        })
+        self.assertEqual([x.evidence[0].source for x in f], ["/var/www/wp-content/uploads/2026/11/x.php"])
 
     def test_long_decode_without_exec_is_warning(self):
         _, f = self.scan({"/var/www/x.php": "<?php $d = base64_decode('" + B64 + "'); file_put_contents('/tmp/a', $d);"})
