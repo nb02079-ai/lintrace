@@ -5,6 +5,7 @@ PRC 계열 항목은 이 표를 함께 쓴다. 항목마다 /proc를 다시 읽�
 생기거나 끝나 항목끼리 결과가 엇갈릴 수 있기 때문이다.
 
 사용법: table = processes(ctx) — 같은 Context에서는 두 번째부터 저장된 표를 돌려준다.
+열린 파일 목록(/proc/<pid>/fd)은 쓰는 항목이 있을 때 table.open_files(ctx)로 한 번만 읽는다.
 """
 import os
 
@@ -59,6 +60,26 @@ class ProcessTable:
         self.procs = procs      # 실행 파일 정보를 읽은 프로세스 [Proc]
         self.denied = denied    # 접근 거부된 PID [str]
         self.total = total      # /proc에 있던 프로세스 수
+        self._files = None
+        self.fd_denied = []     # fd 목록을 읽지 못한 PID
+
+    def open_files(self, ctx):
+        """프로세스가 연 파일 [(Proc, fd 번호, 링크 대상)]. 처음 부를 때 한 번만 읽고 저장한다."""
+        if self._files is None:
+            files = []
+            for p in self.procs:
+                base = "/proc/{}/fd".format(p.pid)
+                try:
+                    fds = ctx.list_dir(base)
+                except Unavailable:
+                    self.fd_denied.append(p.pid)
+                    continue
+                for fd in sorted(fds, key=lambda x: int(x) if x.isdigit() else -1):
+                    target = ctx.readlink(base + "/" + fd)
+                    if target:
+                        files.append((p, fd, target))
+            self._files = files
+        return self._files
 
     def require_access(self):
         """root가 아니라서 남의 프로세스를 못 봤으면 부분 결과를 정상처럼 내지 않는다."""

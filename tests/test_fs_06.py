@@ -173,6 +173,10 @@ class TestFs06(FakeRootTest):
         self.assertIn("/srv/legacy, /srv/site)", check.scope)  # /srv/site/sub은 /srv/site 안쪽이라 합침
         self.assertEqual(len(f), 3)
 
+    def test_file_count_has_thousands_separator(self):
+        check, _ = self.scan({"/var/www/img/{}.png".format(i): "x" for i in range(1000)})
+        self.assertEqual(check.scope, "웹 루트 1개 (/var/www), 스크립트·이미지 파일 1,000개")
+
     def test_large_files_are_skipped(self):
         big = "<?php eval($_POST[1]); ?>" + "a" * (2 * 1024 * 1024)
         check, f = self.scan({"/var/www/big.php": big})

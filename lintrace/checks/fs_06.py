@@ -177,7 +177,7 @@ class Fs06(Check):
         findings.sort(key=lambda f: f.evidence[0].source)  # 폴더를 읽는 순서와 관계없이 같은 결과
         if denied and os.geteuid() != 0:
             raise Unavailable("웹 루트 안 디렉터리 {}개를 읽을 권한 없음 (root로 실행 필요)".format(len(denied)))
-        self.scope = "웹 루트 {}개{}, 스크립트·이미지 파일 {}개".format(
+        self.scope = "웹 루트 {}개{}, 스크립트·이미지 파일 {:,}개".format(
             len(roots), " ({})".format(", ".join(roots)) if roots else "", self.files_checked)
         if denied:
             self.scope += ", root로도 읽지 못한 디렉터리 {}개".format(len(denied))

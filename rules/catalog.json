@@ -402,7 +402,7 @@
     "severity": "critical",
     "attack": "T1070.002",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-02",

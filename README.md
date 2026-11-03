@@ -6,7 +6,7 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 54개 항목을 점검하
 
 ## 상태
 
-1단계(MVP) 진행 중 — 구현 9 / 54 (ACC-01, ACC-06, ACC-07, PER-01, PER-05, PRC-01, PRC-03, FS-02, FS-06 · `python3 -m lintrace --list`로 확인)
+1단계(MVP) 진행 중 — 구현 10 / 54 (ACC-01, ACC-06, ACC-07, PER-01, PER-05, PRC-01, PRC-03, FS-02, FS-06, LOG-01 · `python3 -m lintrace --list`로 확인)
 
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
