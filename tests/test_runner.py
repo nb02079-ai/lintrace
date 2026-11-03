@@ -90,7 +90,7 @@ class TestCatalog(unittest.TestCase):
     def test_implemented_checks_match_catalog(self):
         with open(CATALOG, encoding="utf-8") as f:
             catalog = {c["id"]: c for c in json.load(f)}
-        self.assertEqual(len(catalog), 52)
+        self.assertEqual(len(catalog), 54)  # PRC-09·LOG-07은 CVE-2026-98432를 계기로 추가한 2단계 후보
         ids = [c.id for c in ALL_CHECKS]
         self.assertEqual(len(ids), len(set(ids)), "같은 ID가 두 번 등록됨")
         for cls in ALL_CHECKS:

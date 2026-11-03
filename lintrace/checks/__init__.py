@@ -3,9 +3,10 @@ from .acc_01 import Acc01
 from .acc_06 import Acc06
 from .acc_07 import Acc07
 from .fs_02 import Fs02
+from .fs_06 import Fs06
 from .per_01 import Per01
 from .per_05 import Per05
 from .prc_01 import Prc01
 from .prc_03 import Prc03
 
-ALL_CHECKS = [Acc01, Acc06, Acc07, Per01, Per05, Prc01, Prc03, Fs02]
+ALL_CHECKS = [Acc01, Acc06, Acc07, Per01, Per05, Prc01, Prc03, Fs02, Fs06]

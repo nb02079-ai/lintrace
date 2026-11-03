@@ -252,6 +252,15 @@
     "status": "planned"
   },
   {
+    "id": "PRC-09",
+    "area": "PRC",
+    "name": "커널 스레드가 부모인 사용자 셸",
+    "severity": "critical",
+    "attack": "T1068",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
     "id": "NET-01",
     "area": "NET",
     "name": "예상 목록 밖의 리스닝 포트",
@@ -357,7 +366,7 @@
     "severity": "critical",
     "attack": "T1505.003",
     "phase": 1,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-07",
@@ -437,6 +446,15 @@
     "name": "타임스탬프 조작 의심",
     "severity": "warning",
     "attack": "T1070.006",
+    "phase": 2,
+    "status": "planned"
+  },
+  {
+    "id": "LOG-07",
+    "area": "LOG",
+    "name": "네트워크 스택의 커널 oops·KASAN 기록",
+    "severity": "warning",
+    "attack": "T1068",
     "phase": 2,
     "status": "planned"
   },
