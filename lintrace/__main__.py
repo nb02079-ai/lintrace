@@ -6,7 +6,8 @@ import sys
 from . import __version__
 from .checks import ALL_CHECKS
 from .checks.base import Context, Unavailable
-from .report import text
+from . import archive
+from .report import json_report, text
 
 NOTICE = "본인 소유이거나 점검 권한을 받은 시스템에서만 실행하세요. 이 도구는 시스템을 수정하지 않습니다."
 
@@ -21,6 +22,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="lintrace", description="Ubuntu 서버 침해 흔적 진단")
     p.add_argument("--list", action="store_true", help="점검 항목 목록과 구현 상태 출력")
     p.add_argument("--root", default="/", help="점검할 파일시스템 루트 (테스트용)")
+    p.add_argument("--json", metavar="FILE", help="JSON 결과를 파일로 저장 ('-'면 텍스트 대신 화면에 JSON 출력)")
+    p.add_argument("--out", metavar="DIR", help="증거 아카이브를 만들 폴더 (탐지 근거 파일 복사본, 해시 목록, tar.gz)")
     p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args(argv)
 
@@ -36,8 +39,34 @@ def main(argv=None):
     if args.root == "/" and os.geteuid() != 0:
         print("경고: root가 아니면 일부 파일을 읽지 못해 결과가 불완전합니다.", file=sys.stderr)
 
-    findings, unavailable, scopes, warnings = run_checks(Context(args.root), ALL_CHECKS)
-    print(text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings))
+    ctx = Context(args.root)
+    started = json_report.now_iso()
+    findings, unavailable, scopes, warnings = run_checks(ctx, ALL_CHECKS)
+    report_text = text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings)
+    report = json_report.build(ctx, ALL_CHECKS, findings, unavailable, scopes, warnings, started)
+    report_json = json.dumps(report, ensure_ascii=False, indent=2)
+
+    if args.json == "-":
+        print(report_json)
+    else:
+        print(report_text)
+        if args.json:
+            with open(args.json, "w", encoding="utf-8") as f:
+                f.write(report_json + "\n")
+            print("JSON 결과: {}".format(args.json), file=sys.stderr)
+
+    if args.out:
+        try:
+            folder, tar_path, digest, copied, sources = archive.write(
+                args.out, ctx, report["run"]["host"], ctx.now, findings, report_text, report)
+        except OSError as e:
+            print("증거 아카이브를 만들지 못함: {}".format(e), file=sys.stderr)
+            return 1
+        print("증거 아카이브: {} (근거 경로 {}개 중 파일 {}개 복사)".format(folder, sources, copied), file=sys.stderr)
+        print("묶음: {}".format(tar_path), file=sys.stderr)
+        print("묶음 SHA-256: {}".format(digest), file=sys.stderr)
+        print("주의: 원본 파일을 그대로 복사해 비밀번호 해시 등 민감 정보가 들어 있을 수 있습니다. "
+              "안전한 곳으로 옮기고 접근을 제한하세요.", file=sys.stderr)
     return 0
 
 

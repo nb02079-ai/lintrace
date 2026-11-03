@@ -25,6 +25,8 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 54개 항목을 점검하
 
 ```bash
 sudo python3 -m lintrace            # 점검 실행
+sudo python3 -m lintrace --json result.json     # 같은 결과를 JSON으로도 저장 ('-'면 화면에 JSON만)
+sudo python3 -m lintrace --out /mnt/usb/case1   # 증거 아카이브 (근거 파일 복사본, 해시 목록, tar.gz)
 python3 -m lintrace --list          # 점검 항목과 구현 상태
 python3 -m unittest discover -s tests   # 테스트
 ```
@@ -44,6 +46,10 @@ root가 아니면 읽지 못하는 파일이 있어 해당 항목은 리포트�
 ```
 
 테스트는 root와 일반 계정 양쪽에서 돌려야 전부 실행됩니다. 파일 소유자를 root로 맞춰야 하는 테스트는 일반 계정에서, 권한 없는 파일을 다루는 테스트는 root에서 건너뜁니다.
+
+**JSON 결과**(schema 1)에는 도구 버전과 코드 지문(`code_sha256`), 실행 환경, 항목마다 상태(`detected`/`clean`/`unavailable`)·확인 범위·탐지 근거가 들어갑니다. 탐지가 없는 항목도 모두 넣습니다.
+
+**증거 아카이브**는 탐지 근거가 된 파일을 원래 경로 구조 그대로 읽기 전용으로 복사하고, 원래 크기·권한·소유자·시각·inode·SHA-256을 `manifest.json`에 남깁니다. 프로세스가 붙잡고 있는 지워진 파일(`/proc/PID/fd/N`, `/proc/PID/exe`)도 복사하므로, `sed -i`로 줄을 지운 로그의 원래 내용이나 지워진 실행 파일을 재시작 전에 보존할 수 있습니다. 원본을 그대로 복사하므로 비밀 정보가 들어 있을 수 있어 폴더는 0700으로 만듭니다. 파일당 50MB·전체 500MB를 넘으면 복사하지 않고 해시만 남깁니다. 점검 대상은 바꾸지 않고, `--out`으로 지정한 곳에만 씁니다.
 
 ## 구조
 
