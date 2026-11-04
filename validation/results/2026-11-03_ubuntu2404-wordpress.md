@@ -134,3 +134,22 @@ Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 
 | 다른 9개 항목 변화 없음 | 일치 |
 
 이후 `web-baseline` 복원.
+
+## 5차 적용 — 2-0 JSON·증거 아카이브 (커밋 2028e04, 버전 0.1.0, 코드 해시 1df9a40f…)
+
+`web-baseline` 복원 후 복사. 단위 테스트 158개 통과.
+
+| 확인 | 결과 |
+| --- | --- |
+| 기준선 `--json --out` | 전체 판정 정상, 10개 항목 이상 없음. JSON `verdict: clean`, counts 모두 0, `code_sha256` 일치 |
+| 아카이브 | 근거 경로 0개 — 탐지가 없으면 리포트·manifest·해시 목록만 담김 |
+
+양성 확인: `sudo sed -i '/GET/d' /var/log/nginx/access.log` 후 `--out`
+
+| 확인 | 결과 |
+| --- | --- |
+| LOG-01 | 심각 (nginx가 지워진 access.log를 붙잡음) |
+| 아카이브 | 근거 경로 4개 중 2개 복사 (`/proc/<PID>` 폴더 2개는 복사 대상 아님) |
+| 지운 줄 복구 | 현재 access.log의 `GET` 0줄 → 아카이브 `evidence/proc/814/fd/4`에 182줄 |
+
+이후 `web-baseline` 복원.

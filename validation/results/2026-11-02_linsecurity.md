@@ -351,6 +351,26 @@ FS-02가 훑은 파일 수는 94,683개 (12차 94,722개 — 도구 폴더 복�
 
 1단계 진행: 10 / 10 VM 확인.
 
+## 17차 적용 — 2-0 JSON·증거 아카이브 (커밋 2028e04, 버전 0.1.0, 코드 해시 1df9a40f…)
+
+`original` 복원 후 복사. 단위 테스트 158개 통과 (bob 27개 건너뜀). `01182af`(LOG-01 빈 auth.log 판정 변경)도 이 버전에 포함.
+
+| 확인 | 결과 |
+| --- | --- |
+| 기준선 `--json --out` | 기존 6건 그대로, LOG-01 이상 없음. JSON `verdict: critical`, counts `findings 6 / critical 6 / unavailable 0` — 텍스트와 일치 |
+| JSON `tool.code_sha256` | `1df9a40f…` — 셸로 계산한 코드 해시와 같음 |
+| 아카이브 | 근거 경로 6개 중 6개 복사: `etc/passwd`, `etc/sudoers`, `etc/crontab`, `etc/cron.daily/backup`, `usr/bin/taskset`, `usr/bin/xxd`. `sha256sum -c SHA256SUMS` 9개 모두 OK |
+
+양성 확인: `sed -i '/COMMAND/d' /var/log/auth.log` 후 `--out`
+
+| 확인 | 결과 |
+| --- | --- |
+| LOG-01 | 심각 (rsyslogd PID 692 fd 9) |
+| 아카이브 | 근거 경로 9개 중 8개 복사 (`/proc/692` 폴더는 복사 대상 아님) |
+| 지운 줄 복구 | 현재 `/var/log/auth.log`의 `COMMAND=` 0줄 → 아카이브 `evidence/proc/692/fd/9`에 1줄 — 지운 sudo 기록을 재시작 전에 원본째 보존 |
+
+이후 `original` 복원.
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
@@ -373,3 +393,4 @@ FS-02가 훑은 파일 수는 94,683개 (12차 94,722개 — 도구 폴더 복�
 16. 14차 적용 `sudo /bin/bash` 대화형 셸 1회 (`/var/www/html`에 파일 5개 작성·도구 실행). 이후 스냅샷 복원
 17. LOG-01 정답 확인 `sudo /bin/bash` 대화형 셸 1회 (`ls`, `find /proc/*/fd`, `head`)
 18. 15차 적용 도구 실행 1회, 16차 적용 `sudo /bin/bash` 셸 1회 (auth.log 줄 삭제, rsyslog 재시작, syslog 비우기, kern.log 삭제, 도구 2회). 이후 스냅샷 복원
+19. 17차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, `sha256sum -c`, auth.log 줄 삭제, `grep`). 이후 스냅샷 복원
