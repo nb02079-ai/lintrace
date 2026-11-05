@@ -165,3 +165,12 @@ Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 
 - ACC-11: `pam_permit.so`는 Ubuntu 기본 위치에만. 정답 수집 스크립트가 `/lib/x86_64-linux-gnu/security/*.so` 전부를 "패키지 밖"으로 냈으나 이는 스크립트 문제 — usrmerge 시스템에서 dpkg는 `/usr/lib/...`로 적어 두는데 `/lib/...` 경로로 물었기 때문 (`/usr/lib/...` 쪽은 모두 패키지 소속). 도구의 패키지 DB는 FS-02처럼 usrmerge 별칭을 맞춰야 함
 
 기대: 2-A 8개 항목 모두 탐지 없음. ACC-05 점검 범위에 test의 관리자 그룹(sudo·lxd) 목록.
+
+### auth.log 중간의 NUL 구간 (2026-11-05 확인)
+
+- `/var/log/auth.log` 165줄 중 10·18·95행에 NUL 바이트, 합계 3,077바이트. 파일 앞부분이 아니라 중간 세 곳
+- 이 때문에 `grep`이 파일을 바이너리로 보고 줄을 출력하지 않아, 2-A 정답 수집에서 sshd 기록이 "없음"으로 보였음. `grep -a`로 보면 기록이 있음: `sshd[1300]: Accepted password for test from 192.168.16.18 port 61667 ssh2` (24.04도 프로그램 이름은 `sshd`)
+- 원인 추정: 기록 중이던 auth.log가 스냅샷에 담긴 뒤 복원 — 파일 크기는 늘었는데 데이터 블록은 비어 있던 부분이 0으로 남고, 그 뒤로 rsyslog가 이어 씀. `web-baseline` 복원 횟수와 NUL 구간 수(3곳)가 맞음
+- journal에도 같은 sshd 기록이 있음 (`journalctl -u ssh`) — 2-E에서 사용
+
+도구 설계 반영: 인증 로그 해석기는 NUL을 건너뛰고 끝까지 읽는다. LOG-01은 앞부분 NUL만 보므로 이 상태는 탐지하지 않는다 (중간 NUL 처리는 결정 대기).
