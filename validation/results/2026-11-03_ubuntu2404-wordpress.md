@@ -153,3 +153,15 @@ Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 
 | 지운 줄 복구 | 현재 access.log의 `GET` 0줄 → 아카이브 `evidence/proc/814/fd/4`에 182줄 |
 
 이후 `web-baseline` 복원.
+
+## 2-A 계정·인증 정답 (2026-11-05, `web-baseline`)
+
+- ACC-02: 계정 파일 불일치 없음
+- ACC-03: `sync`뿐 → 제외 대상
+- ACC-04: 이상 없음
+- ACC-05: `adm`에 syslog·test, `sudo`에 test, `lxd`에 test (설치 프로그램이 첫 계정에 기본으로 넣음). `root`·`disk`·`shadow` 구성원 없음
+- ACC-08/09: auth.log에서 sshd 성공·실패 기록을 찾지 못함 — PuTTY로 접속했는데 없음, 확인 필요
+- ACC-10: 기본값 (`Include /etc/ssh/sshd_config.d/*.conf`, `KbdInteractiveAuthentication no`, `UsePAM yes` 등), 위험 설정 없음
+- ACC-11: `pam_permit.so`는 Ubuntu 기본 위치에만. 정답 수집 스크립트가 `/lib/x86_64-linux-gnu/security/*.so` 전부를 "패키지 밖"으로 냈으나 이는 스크립트 문제 — usrmerge 시스템에서 dpkg는 `/usr/lib/...`로 적어 두는데 `/lib/...` 경로로 물었기 때문 (`/usr/lib/...` 쪽은 모두 패키지 소속). 도구의 패키지 DB는 FS-02처럼 usrmerge 별칭을 맞춰야 함
+
+기대: 2-A 8개 항목 모두 탐지 없음. ACC-05 점검 범위에 test의 관리자 그룹(sudo·lxd) 목록.

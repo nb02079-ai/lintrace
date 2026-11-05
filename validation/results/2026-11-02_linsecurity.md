@@ -106,6 +106,18 @@ SUID·SGID 파일 39개, 모두 패키지 소속. 그중 둘은 패키지가 SUI
 
 관찰: 오래된 시스템인데 로그 이력이 부팅 시점부터만 있는 상태는 LOG-01 규칙(비움·잘림·바꿔치기·사슬 끊김)으로는 잡히지 않는다. 흔적이 남지 않는 "통째로 지우고 다시 부팅"은 wtmp·lastlog와의 불일치(LOG-02)나 journal 공백(LOG-05)으로 보는 2단계 과제로 남긴다.
 
+## 2-A 계정·인증 정답 (2026-11-05)
+
+- ACC-02: `insecurity`가 `/etc/passwd`에만 있고 `/etc/shadow`에 없음 (손으로 넣은 계정). 기본 그룹은 모두 있음. 생성 기록(`new user`) 없음 — 로그를 비운 VM
+- ACC-03: UID 1~999 중 로그인 셸은 `sync`(/bin/sync)뿐 → 제외 대상
+- ACC-04: `insecurity`의 passwd 비밀번호 칸에 해시가 직접 들어 있음 (`AzER…`, DES 형식). shadow에는 빈 비밀번호·MD5·DES 없음
+- ACC-05: `root`·`disk`·`sudo`·`shadow`·`lxd` 그룹은 구성원 없음, `adm`에 `syslog`. **`docker` 그룹에 `peter`** — docker 그룹은 `docker run -v /:/mnt`로 root 파일시스템을 다룰 수 있어 사실상 root 권한. peter는 sudo 그룹이 아니므로 그룹으로 얻는 새 권한 상승 경로 (sudoers의 strace NOPASSWD와 별개)
+- ACC-08/09: SSH 성공 2건 (192.168.56.1, 검증자 호스트), 실패 없음
+- ACC-10: `PermitRootLogin yes`
+- ACC-11: 패키지 밖 PAM 모듈 없음, PAM 패키지 검증(`dpkg --verify`) 변경 없음. `pam_permit.so`는 Ubuntu 기본 위치에만 (`common-auth`의 `auth required`, `common-session`·`common-account`·`common-password`)
+
+기대: ACC-02 위험(insecurity), ACC-04 위험(insecurity), ACC-05 위험(peter docker), ACC-10 참고(PermitRootLogin yes), 나머지 탐지 없음.
+
 ## 2차 적용 (같은 날, 커밋 58982a3)
 
 구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
@@ -394,3 +406,4 @@ FS-02가 훑은 파일 수는 94,683개 (12차 94,722개 — 도구 폴더 복�
 17. LOG-01 정답 확인 `sudo /bin/bash` 대화형 셸 1회 (`ls`, `find /proc/*/fd`, `head`)
 18. 15차 적용 도구 실행 1회, 16차 적용 `sudo /bin/bash` 셸 1회 (auth.log 줄 삭제, rsyslog 재시작, syslog 비우기, kern.log 삭제, 도구 2회). 이후 스냅샷 복원
 19. 17차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, `sha256sum -c`, auth.log 줄 삭제, `grep`). 이후 스냅샷 복원
+20. 2-A 정답 확인 `sudo /bin/bash` 셸 1회 (`/etc/passwd`·`shadow`·`group`, auth.log, sshd 설정, `/etc/pam.d`, `dpkg -S`·`--verify`)
