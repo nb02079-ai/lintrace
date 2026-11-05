@@ -73,7 +73,7 @@ class TestJson(FakeRootTest):
         acc01 = [c for c in d["checks"] if c["id"] == "ACC-01"][0]
         self.assertEqual(acc01["scope"], "계정 3개")
         self.assertEqual(acc01["findings"][0]["evidence"][0]["source"], "/etc/passwd")
-        self.assertEqual(d["counts"], {"checks": 10, "findings": 1, "unavailable": 1,
+        self.assertEqual(d["counts"], {"checks": len(ALL_CHECKS), "findings": 1, "unavailable": 3,
                                        "critical": 1, "warning": 0, "info": 0})
 
     def test_json_file_matches_text_report(self):

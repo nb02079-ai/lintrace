@@ -81,17 +81,19 @@ def is_standard(pattern):
 
 
 class _SshdConfig:
-    """sshd_config와 Include된 파일에서 AuthorizedKeysFile 설정을 모은다."""
+    """sshd_config와 Include된 파일을 읽는다 (ACC-07 AuthorizedKeysFile, ACC-10 위험 설정)."""
 
     def __init__(self, ctx):
         self.ctx = ctx
-        self.entries = []   # (파일, 줄 번호, 줄, [값들])
+        self.entries = []      # AuthorizedKeysFile: (파일, 줄 번호, 줄, [값들])
+        self.directives = []   # 모든 지시어: (파일, 줄 번호, 줄, 소문자 키, 값, Match 블록 안인지)
         self.visited = set()
 
     def parse(self, path, depth=0):
         if depth > MAX_DEPTH or path in self.visited:
             return
         self.visited.add(path)
+        in_match = False
         for no, raw in enumerate(self.ctx.read_lines(path, missing_ok=True), start=1):
             s = raw.strip()
             if not s or s.startswith("#"):
@@ -100,6 +102,9 @@ class _SshdConfig:
             if not m:
                 continue
             key, value = m.group(1).lower(), m.group(2).strip()
+            if key == "match":
+                in_match = value.lower() != "all"
+            self.directives.append((path, no, s, key, value, in_match))
             if key == "include":
                 for target in value.split():
                     if not target.startswith("/"):

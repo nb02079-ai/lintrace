@@ -159,6 +159,23 @@ class TestLog01(ProcRootTest):
         self.assertIn("앞부분 500바이트가 NUL", f[0].reason)
         self.assertIn("이어지는 첫 줄: Nov  3 03:10:01 linsecurity CRON", f[0].evidence[0].detail)
 
+    def test_middle_nul_is_info(self):
+        """Ubuntu 24.04 VM의 auth.log처럼 중간 세 곳에 NUL (스냅샷 복원) — 참고로만"""
+        body = (LINE * 9 + "\0" * 1000 + LINE * 7 + "\0" * 77 + "2026-11-04T23:44:15.420134+00:00 test sshd[1300]: "
+                "Accepted password for test\n" + LINE * 76 + "\0" * 2000 + LINE)
+        _, f = self.run_check(logs(**{"/var/log/auth.log": body.encode()}))
+        self.assertEqual(len(f), 1)
+        self.assertEqual(f[0].severity, "info")
+        self.assertIn("로그 중간에 NUL(0 바이트) 구간 3곳, 합계 3,077바이트", f[0].reason)
+        self.assertEqual(f[0].evidence[0].detail.split(":")[0], "10행")
+        self.assertIn("NUL 77바이트 뒤 이어지는 줄: 2026-11-04T23:44:15", f[0].evidence[1].detail)
+        self.assertTrue(f[0].evidence[2].detail.startswith("94행"))
+
+    def test_leading_nul_is_not_also_middle(self):
+        files = logs(**{"/var/log/syslog": b"\0" * 500 + LINE.encode() * 3})
+        _, f = self.run_check(files)
+        self.assertEqual([x.severity for x in f], ["critical"])
+
     def test_empty_logs(self):
         files = logs(**{"/var/log/auth.log": "", "/var/log/kern.log": "", "/var/log/mail.err": "",
                         "/etc/nginx/nginx.conf": NGINX_CONF, "/var/log/nginx/access.log": "",

@@ -34,9 +34,11 @@ class TestRunner(FakeRootTest):
         root = self.make_root({"/etc/passwd": "root:x:0:0:root:/root:/bin/bash\n",
                                "/etc/sudoers": None})  # 읽을 수 없는 sudoers
         out = self.output(root)
-        self.assertIn("점검 불가 1개", out.splitlines()[0])
+        # sudoers를 못 읽은 ACC-06, 인증 로그가 없는 ACC-08·09
+        self.assertIn("점검 불가 3개", out.splitlines()[0])
         summary = out.split("점검 범위:")[1]
         self.assertIn("  ACC-06 — 점검 불가\n", summary)
+        self.assertIn("  ACC-08 — 점검 불가\n", summary)
         self.assertIn("  ACC-01 — 계정 1개 확인 (이상 없음)", summary)
 
     def test_one_broken_check_does_not_stop_others(self):

@@ -41,6 +41,7 @@ LOG_DIR = "/var/log/"
 JOURNAL_DIR = "/var/log/journal/"
 APACHE_LOG_DIR = "/var/log/apache2"
 NUL_SCAN = 1024 * 1024
+MIDDLE_SCAN = 1024 * 1024 * 1024
 MAX_INCLUDES = 64
 
 ROTATED = re.compile(r"^(?P<base>.+?)(?:\.(?P<num>\d+)|-\d{8}(?:\d{2})?)(?:\.(?:gz|xz|bz2|zst|lz4|Z))?$")
@@ -170,6 +171,55 @@ def web_targets(ctx):
     return targets
 
 
+def nul_runs(full, limit):
+    """파일 앞부분이 아닌 곳의 NUL 구간 [(줄 번호, 길이, 이어지는 줄)]과 합계. 읽지 못하면 ([], 0)."""
+    runs, total = [], 0
+    line, offset, current, after_pending = 1, 0, None, None
+    try:
+        with open(full, "rb") as f:
+            while offset < limit:
+                chunk = f.read(1024 * 1024)
+                if not chunk:
+                    break
+                i = 0
+                while i < len(chunk):
+                    if current is not None:
+                        j = i
+                        while j < len(chunk) and chunk[j] == 0:
+                            j += 1
+                        current[1] += j - i
+                        i = j
+                        if i < len(chunk):  # 구간이 끝났다
+                            end = chunk.find(b"\n", i)
+                            text = chunk[i:end if end >= 0 else len(chunk)][:120]
+                            runs.append((current[0], current[1], text.decode("utf-8", "replace").strip()))
+                            total += current[1]
+                            current = None
+                        continue
+                    k = chunk.find(b"\0", i)
+                    if k < 0:
+                        line += chunk.count(b"\n", i)
+                        break
+                    line += chunk.count(b"\n", i, k)
+                    if offset + k == 0:  # 앞부분 NUL은 check_content가 심각으로 본다
+                        j = k
+                        while j < len(chunk) and chunk[j] == 0:
+                            j += 1
+                        if j == len(chunk):
+                            return [], 0
+                        i = j
+                        continue
+                    current = [line, 0]
+                    i = k
+                offset += len(chunk)
+    except OSError:
+        return [], 0
+    if current is not None:
+        runs.append((current[0], current[1], ""))
+        total += current[1]
+    return runs, total
+
+
 def leading_nul(data):
     return len(data) - len(data.lstrip(b"\0"))
 
@@ -200,6 +250,9 @@ class Log01(Check):
             if st is not None and stat.S_ISREG(st.st_mode):
                 present += 1
                 f = self.check_content(ctx, targets[path], st)
+                if f:
+                    findings.append(f)
+                f = self.check_middle_nul(ctx, path, st)
                 if f:
                     findings.append(f)
             f = self.check_chain(ctx, path, st, path in held)
@@ -287,6 +340,29 @@ class Log01(Check):
             next_steps="순환 시각(logrotate 기록, /var/lib/logrotate/status)과 비교하고, 직전 순환 파일(.1)의 마지막 줄 이후 기록이 어디 갔는지 확인한다.",
             evidence=self.size_evidence(ctx, path, st),
             severity="warning",
+        )
+
+    def check_middle_nul(self, ctx, path, st):
+        """로그 중간의 NUL 구간 (참고).
+
+        dd conv=notrunc 등으로 줄을 제자리에서 0으로 덮어쓰면 inode가 그대로라 바꿔치기 검사를 피한다.
+        이때 남는 흔적이 중간 NUL 구간이다. 스냅샷 복원·비정상 종료로도 생기므로 판정에는 영향을 주지 않는다.
+        (2026-11-05 결정 — Ubuntu 24.04 VM의 auth.log에서 스냅샷 복원으로 생긴 3곳을 확인)
+        """
+        runs, total = nul_runs(ctx.path(path), MIDDLE_SCAN)
+        if not runs:
+            return None
+        ev = [Evidence(path, "{}행: NUL {:,}바이트 뒤 이어지는 줄: {}".format(no, n, after or "(확인 못 함)"))
+              for no, n, after in runs[:5]]
+        if len(runs) > 5:
+            ev.append(Evidence(path, "외 {}곳".format(len(runs) - 5)))
+        return self.finding(
+            reason="{}: 로그 중간에 NUL(0 바이트) 구간 {}곳, 합계 {:,}바이트 — 줄을 제자리에서 0으로 덮어쓴 흔적일 수 있다 "
+                   "(스냅샷 복원·비정상 종료로도 생김)".format(path, len(runs), total),
+            next_steps="구간 앞뒤 줄의 시각을 보고 그사이 기록이 빠졌는지 확인한다. 시스템 재부팅·스냅샷 복원 시각과 맞으면 "
+                       "정상이고, 맞지 않으면 원격 로그 서버·journal의 같은 시간대 기록과 비교한다.",
+            evidence=ev,
+            severity="info",
         )
 
     def size_evidence(self, ctx, path, st):

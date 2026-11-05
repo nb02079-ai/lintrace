@@ -25,6 +25,7 @@ import re
 import stat
 
 from .. import timefmt
+from ..collectors.packages import packages, path_aliases  # noqa: F401 (path_aliases는 테스트가 씀)
 from .base import Check, Context, Evidence, Unavailable
 
 STATIC_EXCLUDE = ("/proc", "/sys", "/run", "/dev", "/snap")
@@ -61,24 +62,12 @@ SUID_ESCAPE = {
     # 내려받기
     "wget", "curl", "nc",
 }
-USRMERGE = ("/bin", "/sbin", "/lib", "/lib32", "/lib64", "/libx32")
 
 
 def norm_name(path):
     """python3.6 → python, vim.basic → vim"""
     base = posixpath.basename(path)
     return re.sub(r"\d+$", "", base.split(".")[0])
-
-
-def path_aliases(path):
-    """usrmerge 시스템에서 dpkg 목록이 /bin/su로 적었어도 /usr/bin/su와 맞도록 별칭을 만든다."""
-    out = {path}
-    for top in USRMERGE:
-        if path.startswith("/usr" + top + "/"):
-            out.add(path[4:])
-        elif path.startswith(top + "/"):
-            out.add("/usr" + path)
-    return out
 
 
 def unescape_mount(s):
@@ -168,22 +157,15 @@ class Fs02(Check):
 
     @staticmethod
     def owning_packages(ctx, paths):
-        """후보 파일 → 소속 패키지. dpkg 정보가 없으면 None."""
-        info = "/var/lib/dpkg/info"
-        if ctx.stat(info, follow=True) is None:
+        """후보 파일 → 소속 패키지. dpkg 정보가 없으면 None. (공통 패키지 DB를 쓴다)"""
+        db = packages(ctx)
+        if not db.available:
             return None
-        wanted = {}
-        for p in paths:
-            for alias in path_aliases(p):
-                wanted.setdefault(alias, set()).add(p)
         found = {}
-        for name in ctx.list_dir(info):
-            if not name.endswith(".list"):
-                continue
-            pkg = name[:-5].split(":")[0]
-            for line in ctx.read_lines(posixpath.join(info, name), missing_ok=True):
-                for p in wanted.get(line.strip(), ()):
-                    found.setdefault(p, pkg)
+        for p in paths:
+            pkg = db.owner(p)
+            if pkg:
+                found[p] = pkg
         return found
 
     @staticmethod

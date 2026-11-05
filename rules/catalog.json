@@ -11,11 +11,11 @@
   {
     "id": "ACC-02",
     "area": "ACC",
-    "name": "생성 기록이 없는 계정",
+    "name": "정상 도구로 만들지 않은 흔적이 있는 계정",
     "severity": "warning",
     "attack": "T1136.001",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-03",
@@ -24,7 +24,7 @@
     "severity": "warning",
     "attack": "T1098",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-04",
@@ -33,7 +33,7 @@
     "severity": "warning",
     "attack": "T1098",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-05",
@@ -42,7 +42,7 @@
     "severity": "warning",
     "attack": "T1098",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-06",
@@ -69,7 +69,7 @@
     "severity": "critical",
     "attack": "T1110",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-09",
@@ -78,7 +78,7 @@
     "severity": "info",
     "attack": "T1078",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-10",
@@ -87,7 +87,7 @@
     "severity": "info",
     "attack": "T1098",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "ACC-11",
@@ -96,7 +96,7 @@
     "severity": "critical",
     "attack": "T1556.003",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-01",
