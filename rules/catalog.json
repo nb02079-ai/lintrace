@@ -195,7 +195,7 @@
     "severity": "critical",
     "attack": "T1620",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-03",
@@ -213,7 +213,7 @@
     "severity": "critical",
     "attack": "T1036.004",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-05",
@@ -222,7 +222,7 @@
     "severity": "critical",
     "attack": "T1014",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-06",
@@ -231,7 +231,7 @@
     "severity": "warning",
     "attack": "T1205.002",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-07",
@@ -240,7 +240,7 @@
     "severity": "warning",
     "attack": "T1574.006",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-08",
@@ -249,7 +249,7 @@
     "severity": "critical",
     "attack": "T1059.004",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-09",
@@ -258,7 +258,7 @@
     "severity": "critical",
     "attack": "T1068",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "NET-01",
@@ -267,7 +267,7 @@
     "severity": "warning",
     "attack": "T1571",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "NET-02",
@@ -276,7 +276,7 @@
     "severity": "warning",
     "attack": "T1071",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "NET-03",
@@ -312,7 +312,7 @@
     "severity": "warning",
     "attack": "T1040",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-01",

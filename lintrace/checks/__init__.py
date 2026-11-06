@@ -16,6 +16,17 @@ from .log_01 import Log01
 from .per_01 import Per01
 from .per_05 import Per05
 from .prc_01 import Prc01
+from .prc_02 import Prc02
 from .prc_03 import Prc03
+from .prc_04 import Prc04
+from .prc_05 import Prc05
+from .prc_06 import Prc06
+from .prc_07 import Prc07
+from .prc_08 import Prc08
+from .prc_09 import Prc09
+from .net_01 import Net01
+from .net_02 import Net02
+from .net_06 import Net06
 
-ALL_CHECKS = [Acc01, Acc02, Acc03, Acc04, Acc05, Acc06, Acc07, Acc08, Acc09, Acc10, Acc11, Per01, Per05, Prc01, Prc03, Fs02, Fs06, Log01]
+ALL_CHECKS = [Acc01, Acc02, Acc03, Acc04, Acc05, Acc06, Acc07, Acc08, Acc09, Acc10, Acc11, Per01, Per05, Prc01, Prc02, Prc03, Prc04, Prc05, Prc06, Prc07, Prc08, Prc09, Fs02, Fs06, Log01,
+              Net01, Net02, Net06]
