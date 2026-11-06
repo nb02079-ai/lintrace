@@ -475,3 +475,15 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 23. 19차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, nc·sleep·tcpdump 실행). 이후 스냅샷 복원
 24. NFS 정답 확인 (bob, `/proc/fs/nfsd/portlist`, `nlm_*port`, `rpcinfo`, `ss`)
 25. 20차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, nc·bash·python 실행). 이후 스냅샷 복원
+
+## 2-C 지속성·패키지 무결성 정답 (2026-11-06, `original`)
+
+- `dpkg --verify` 15줄, 모두 설정 파일(c): update-motd.d 13개, /etc/sudoers, /etc/crontab, /etc/hosts.equiv, /etc/sysctl.d/10-ipv6-privacy.conf. update-motd.d는 00-header만 내용이 바뀌었고(끝에 `printf "\n$(cat /etc/update-motd.d/logo)\n"`와 환영 문구) 나머지 12개와 hosts.equiv는 **삭제**됨 — dpkg는 없는 설정 파일도 `??5`로 표시
+- 지속성 위치의 패키지 밖 파일: snap-core-4486·4917.mount(실행 지시어 없음, `What=/var/lib/snapd/snaps/…`), /etc/udev/rules.d/70-snap.core.rules(RUN 0개), /etc/update-motd.d/logo(실행 권한 없음 — run-parts가 건너뜀, 내용은 ASCII 그림), **/lib/systemd/system/debug.service**
+- **debug.service**: 소유자 peter(일반 사용자)·`-rw-r--r--`, `User=root`, `ExecStart=/root/debug`, `Restart=always`, enabled — peter가 유닛을 고쳐 root로 명령을 실행할 수 있는 권한 상승 경로 (8번째)
+- /etc/profile: `/usr/share/base-files/profile`과 비교해 `unset HISTFILE` 한 줄 추가 (모든 사용자 명령 기록 끔). /etc/profile은 dpkg 설정 파일이 아니라 `dpkg --verify`로는 안 보임
+- 시스템 경로의 패키지 밖 파일: 대체 링크(/etc/alternatives)와 dpkg diversion(/bin/sh.distrib — dash, /usr/sbin/grub-set-default.real — grub-legacy-ec2)뿐. /usr/local 비어 있음
+- at 설치됨, 대기 작업 없음 (/var/spool/cron/atjobs에 .SEQ만). /etc/rc.local 없음
+- 커널 4.15.0-23, tainted 9216 = C(staging)+E(서명 없음) — /sys/module/vboxvideo/taint `CE`, 커널 트리 안 모듈. /proc/modules 88개 = /sys/module initstate 88개. 트리 밖 모듈·modprobe `install` 줄 없음
+- PAM: sshd·login 모두 pam_motd 사용 (로그인 때 update-motd.d 실행)
+- 정답 명령 주의: /lib→/usr/lib로 맞춘 경로가 출력돼 debug.service가 /usr/lib에 있는 것처럼 보였음 (usrmerge 없는 시스템)

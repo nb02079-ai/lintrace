@@ -247,3 +247,15 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 기준선(`web-baseline`): 판정 정상, 탐지 2건 (LOG-01 참고 — 스냅샷 복원 NUL 구간). 2-B 탐지 없음, 리스닝 9개 정답과 일치. 보정(NFS 판별)은 이 VM에 nfsd·lockd 모듈이 없어 영향 없음.
 
 2-B 10개 항목 두 VM 확인 완료.
+
+## 2-C 지속성·패키지 무결성 정답 (2026-11-06, `web-baseline`)
+
+- `dpkg --verify` 0줄
+- 지속성 위치의 패키지 밖 파일: netplan이 부팅 때 만든 /run 파일 3개 — netplan-ovs-cleanup.service(`ExecStart=/usr/sbin/netplan apply --only-ovs-cleanup`), systemd-networkd-wait-online.service.d/10-netplan.conf(`ExecStart=/lib/systemd/systemd-networkd-wait-online …`), 90-netplan.rules(RUN 없음)
+- 시스템 경로의 패키지 밖 파일 47개: 모두 대체 링크 → 패키지 파일. /usr/local 비어 있음
+- /etc/profile = base-files 원본, 셸 초기화 파일에 의심 줄 없음
+- at 미설치, /etc/rc.local 없음
+- 커널 6.8.0-147, tainted 0, /proc/modules 72개 = initstate 72개, 트리 밖 모듈 없음. modprobe `install algif_aead /bin/false`(패키지)
+- PAM: sshd·login pam_motd 사용
+
+기대: 2-C 탐지 없음.
