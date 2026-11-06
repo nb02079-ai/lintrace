@@ -283,3 +283,13 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 11 / 11 일치. 표시 개선 3건(udev 근거의 `+=`, 임시 폴더 조건 중복, usrmerge에서 /bin 대신 /usr/bin 경로 표시)은 반영 대기. 이후 `web-baseline` 복원.
 
 2-C 9개 항목 두 VM 확인 완료.
+
+## 2-D 파일·명령 기록·설정 정답 (2026-11-06, `web-baseline`)
+
+- 임시 폴더 ELF 없음, immutable·append-only 없음(/etc /root /home /var/spool /var/www /usr/bin /usr/sbin /tmp), 명령 기록 파일 없음
+- capability: snap-confine(chown·dac_override·dac_read_search·fowner·setgid·setuid·sys_chroot·sys_ptrace·sys_admin·sys_resource — snapd 패키지), gst-ptp-helper(net_bind_service·net_admin·sys_nice), ping·mtr-packet(net_raw) — 모두 패키지 파일
+- 시스템 영역 숨김 폴더: /usr/lib/modules/…/vdso/.build-id, /tmp/.font-unix·.ICE-unix·.XIM-unix·.X11-unix
+- 웹: /var/www/wordpress, PHP 1,518개 **전부 www-data 소유**(wp-includes·wp-admin·themes 포함 — 전체를 chown한 설치). access.log 209줄, 공격 패턴 없음 (grep의 'select'가 imgareaselect에 걸린 것뿐 — SQL 패턴은 단어 경계·문맥 필요)
+- /etc/hosts 기본(127.0.1.1 test), resolv.conf → systemd-resolved 스텁(127.0.0.53), resolved.conf 기본
+- iptables 규칙 없음, /etc/nftables.conf(패키지), ufw inactive
+- 주의: 처음 받은 정답은 WordPress 설치 전 스냅샷 상태였음(/var/www에 html만, access.log 0바이트) — `web-baseline` 복원 후 웹 부분 다시 받음
