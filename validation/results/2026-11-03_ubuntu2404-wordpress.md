@@ -210,3 +210,15 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 | ACC-09 | 참고 (127.0.0.1 새 출처) |
 
 2-A 8개 항목 두 VM 확인 완료.
+
+## 2-B 프로세스·네트워크 정답 (2026-11-06, `web-baseline`)
+
+- 리스닝: sshd 22(systemd 소켓 활성화 — sshd와 PID 1이 함께 잡음), nginx 80(master·worker), mariadbd 3306(127.0.0.1), systemd-resolved 53(127.0.0.53·127.0.0.54), systemd-networkd 68(DHCP). 모두 패키지 프로세스
+- 연결: sshd ↔ 192.168.16.18 (검증자)
+- raw·packet: systemd-networkd만 (LLDP packet 소켓, ipv6-icmp raw 소켓) — lin.security와 같음
+- memfd 실행, 대괄호 이름 위장, PID 2의 자식 중 실행 파일 있는 것, LD_PRELOAD: 없음
+- 표준 입출력이 소켓: systemd 서비스 다수(journald unix 소켓)
+- ps 115개 = /proc 115개, pid_max 4,194,304
+- promiscuous 인터페이스 없음
+
+기대: 2-B 10개 항목 탐지 없음.

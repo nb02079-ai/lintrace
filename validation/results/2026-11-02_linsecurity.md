@@ -118,6 +118,18 @@ SUID·SGID 파일 39개, 모두 패키지 소속. 그중 둘은 패키지가 SUI
 
 기대: ACC-02 위험(insecurity), ACC-04 위험(insecurity), ACC-05 위험(peter docker), ACC-10 참고(PermitRootLogin yes), 나머지 탐지 없음.
 
+## 2-B 프로세스·네트워크 정답 (2026-11-06)
+
+- 리스닝: sshd 22, systemd-resolved 53(lo), systemd-networkd 68(DHCP), rpcbind 111·632, rpc.mountd 여러 포트, **소유 프로세스가 없는 소켓** 2049·40155·44349(tcp), 2049·34056·43427(udp) — NFS 서버의 커널 스레드(nfsd·lockd)가 연 소켓이라 프로세스가 없음
+- 연결: sshd ↔ 192.168.56.1 (검증자)
+- raw·packet: systemd-networkd만 (LLDP packet 소켓, ipv6-icmp raw 소켓)
+- memfd 실행, 대괄호 이름 위장, PID 2의 자식 중 실행 파일 있는 것, LD_PRELOAD: 없음
+- 표준 입출력이 소켓: systemd 서비스 다수(journald unix 소켓) — 셸·TCP는 없음
+- ps 110개 = /proc 110개, pid_max 32768
+- promiscuous 인터페이스 없음 (docker0는 DOWN)
+
+기대: 2-B 10개 항목 탐지 없음. NFS 커널 소켓은 프로세스가 없어도 정상으로 처리해야 함.
+
 ## 2차 적용 (같은 날, 커밋 58982a3)
 
 구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
@@ -423,3 +435,4 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 19. 17차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, `sha256sum -c`, auth.log 줄 삭제, `grep`). 이후 스냅샷 복원
 20. 2-A 정답 확인 `sudo /bin/bash` 셸 1회 (`/etc/passwd`·`shadow`·`group`, auth.log, sshd 설정, `/etc/pam.d`, `dpkg -S`·`--verify`)
 21. 18차 적용 도구 실행 1회 (`sudo /bin/bash -c`)
+22. 2-B 정답 확인 `sudo /bin/bash` 셸 1회 (`ss`, `/proc/*/exe·cmdline·environ·fd`, `ps`, `/sys/class/net`)
