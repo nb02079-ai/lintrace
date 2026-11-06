@@ -24,6 +24,8 @@ def main(argv=None):
     p.add_argument("--root", default="/", help="점검할 파일시스템 루트 (테스트용)")
     p.add_argument("--json", metavar="FILE", help="JSON 결과를 파일로 저장 ('-'면 텍스트 대신 화면에 JSON 출력)")
     p.add_argument("--out", metavar="DIR", help="증거 아카이브를 만들 폴더 (탐지 근거 파일 복사본, 해시 목록, tar.gz)")
+    p.add_argument("--full", action="store_true",
+                   help="패키지 무결성(FS-04)을 핵심 경로가 아니라 모든 패키지 파일로 검사 (느림)")
     p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args(argv)
 
@@ -40,6 +42,7 @@ def main(argv=None):
         print("경고: root가 아니면 일부 파일을 읽지 못해 결과가 불완전합니다.", file=sys.stderr)
 
     ctx = Context(args.root)
+    ctx.full = args.full
     started = json_report.now_iso()
     findings, unavailable, scopes, warnings = run_checks(ctx, ALL_CHECKS)
     report_text = text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings)

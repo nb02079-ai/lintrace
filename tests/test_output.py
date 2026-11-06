@@ -73,7 +73,8 @@ class TestJson(FakeRootTest):
         acc01 = [c for c in d["checks"] if c["id"] == "ACC-01"][0]
         self.assertEqual(acc01["scope"], "계정 3개")
         self.assertEqual(acc01["findings"][0]["evidence"][0]["source"], "/etc/passwd")
-        self.assertEqual(d["counts"], {"checks": len(ALL_CHECKS), "findings": 1, "unavailable": 3,
+        # ACC-06·08·09 + 가짜 루트에 /proc/modules·dpkg 정보가 없는 PER-07·FS-04·FS-05
+        self.assertEqual(d["counts"], {"checks": len(ALL_CHECKS), "findings": 1, "unavailable": 6,
                                        "critical": 1, "warning": 0, "info": 0})
 
     def test_json_file_matches_text_report(self):

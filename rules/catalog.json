@@ -114,7 +114,7 @@
     "severity": "warning",
     "attack": "T1543.002",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-03",
@@ -123,7 +123,7 @@
     "severity": "warning",
     "attack": "T1037.004",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-04",
@@ -132,7 +132,7 @@
     "severity": "warning",
     "attack": "T1546.004",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-05",
@@ -150,7 +150,7 @@
     "severity": "info",
     "attack": "T1053.002",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-07",
@@ -159,7 +159,7 @@
     "severity": "warning",
     "attack": "T1547.006",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-08",
@@ -168,7 +168,7 @@
     "severity": "warning",
     "attack": "T1546.017",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PER-09",
@@ -177,7 +177,7 @@
     "severity": "warning",
     "attack": "T1037",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "PRC-01",
@@ -348,7 +348,7 @@
     "severity": "critical",
     "attack": "T1554",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-05",
@@ -357,7 +357,7 @@
     "severity": "warning",
     "attack": "T1554",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-06",
