@@ -259,3 +259,27 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 - PAM: sshd·login pam_motd 사용
 
 기대: 2-C 탐지 없음.
+
+## 9차 적용 — 2-C (`87073a1`, 2026-11-06)
+
+기준선(`web-baseline`): 판정 정상, 탐지 2건(LOG-01 참고만). PER-02 netplan /run 생성 파일 2개·PER-08 netplan 규칙(명령 없음) 정상 처리, FS-04 핵심 경로 1,439개·설정 파일 786개 변경 0, FS-05 대체 링크 49개
+
+양성 (root 셸, 한 줄씩):
+
+| 시험 | 기대 | 결과 |
+| --- | --- | --- |
+| /etc/systemd/system/upd.service `ExecStart=/bin/sh -c "curl … \| sh"` | PER-02 심각 | 일치 — 내려받아 바로 실행 |
+| dbg.service 소유자 test | PER-02 심각 | 일치 — 일반 사용자 test 소유 root 유닛 (둘이 /etc/systemd/system 한 건으로 묶임) |
+| 실행 가능한 rc.local `/dev/shm/.x &` | PER-03 심각 | 일치 |
+| ~/.bashrc `alias sudo='sudo -S'` | PER-04 위험 | 일치 — /etc/skel과 비교해 추가된 118행 |
+| modprobe.d `install dummy /tmp/.k/run` | PER-07 심각 | 일치 |
+| udev `RUN+="/var/tmp/.u"` | PER-08 심각 | 일치 |
+| update-motd.d/99-x 리버스 셸 | PER-09 심각 | 일치 |
+| /usr/bin/tac 끝에 1바이트 | FS-04 심각 | 일치 — MD5 설치 당시와 다름 |
+| /etc/pam.d/su 주석 추가 | FS-04 참고 | 일치 |
+| /usr/bin/.sysd (bash 복사) | FS-05 심각 | 일치 — 숨김 이름 + 셸 복사본 |
+| /usr/local/bin/sudo | FS-05 위험 | 일치 |
+
+11 / 11 일치. 표시 개선 3건(udev 근거의 `+=`, 임시 폴더 조건 중복, usrmerge에서 /bin 대신 /usr/bin 경로 표시)은 반영 대기. 이후 `web-baseline` 복원.
+
+2-C 9개 항목 두 VM 확인 완료.

