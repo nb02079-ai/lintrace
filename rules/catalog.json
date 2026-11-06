@@ -285,7 +285,7 @@
     "severity": "info",
     "attack": "T1565.001",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "NET-04",
@@ -294,7 +294,7 @@
     "severity": "warning",
     "attack": "T1565.001",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "NET-05",
@@ -303,7 +303,7 @@
     "severity": "warning",
     "attack": "T1562.004",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "NET-06",
@@ -321,7 +321,7 @@
     "severity": "warning",
     "attack": "T1105",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-02",
@@ -339,7 +339,7 @@
     "severity": "warning",
     "attack": "T1548",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-04",
@@ -375,7 +375,7 @@
     "severity": "warning",
     "attack": "T1505.003",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-08",
@@ -384,7 +384,7 @@
     "severity": "warning",
     "attack": "T1564.001",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "FS-09",
@@ -393,7 +393,7 @@
     "severity": "warning",
     "attack": "T1222.002",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-01",
@@ -465,7 +465,7 @@
     "severity": "critical",
     "attack": "T1105",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "CMD-02",
@@ -474,7 +474,7 @@
     "severity": "critical",
     "attack": "T1140",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "CMD-03",
@@ -483,6 +483,6 @@
     "severity": "warning",
     "attack": "T1190",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   }
 ]

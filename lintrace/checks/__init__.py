@@ -10,10 +10,18 @@ from .acc_08 import Acc08
 from .acc_09 import Acc09
 from .acc_10 import Acc10
 from .acc_11 import Acc11
+from .cmd_01 import Cmd01
+from .cmd_02 import Cmd02
+from .cmd_03 import Cmd03
+from .fs_01 import Fs01
 from .fs_02 import Fs02
+from .fs_03 import Fs03
 from .fs_04 import Fs04
 from .fs_05 import Fs05
 from .fs_06 import Fs06
+from .fs_07 import Fs07
+from .fs_08 import Fs08
+from .fs_09 import Fs09
 from .log_01 import Log01
 from .per_01 import Per01
 from .per_02 import Per02
@@ -35,8 +43,11 @@ from .prc_08 import Prc08
 from .prc_09 import Prc09
 from .net_01 import Net01
 from .net_02 import Net02
+from .net_03 import Net03
+from .net_04 import Net04
+from .net_05 import Net05
 from .net_06 import Net06
 
 ALL_CHECKS = [Acc01, Acc02, Acc03, Acc04, Acc05, Acc06, Acc07, Acc08, Acc09, Acc10, Acc11, Per01, Per02, Per03, Per04, Per05, Per06, Per07,
-              Per08, Per09, Prc01, Prc02, Prc03, Prc04, Prc05, Prc06, Prc07, Prc08, Prc09, Fs02, Fs04, Fs05, Fs06, Log01,
-              Net01, Net02, Net06]
+              Per08, Per09, Prc01, Prc02, Prc03, Prc04, Prc05, Prc06, Prc07, Prc08, Prc09, Fs01, Fs02, Fs03, Fs04, Fs05, Fs06, Fs07, Fs08, Fs09, Cmd01, Cmd02, Cmd03, Log01,
+              Net01, Net02, Net03, Net04, Net05, Net06]

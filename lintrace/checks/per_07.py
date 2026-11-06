@@ -20,8 +20,7 @@ import posixpath
 import re
 
 from .base import Check, Context, Evidence
-from .persist import Item, file_evidence, file_state, group, regular, target_issues
-from .scriptscan import scan_command
+from .persist import Item, exec_conditions, file_evidence, file_state, group, regular
 
 MODULES_LOAD = ["/etc/modules-load.d", "/run/modules-load.d", "/usr/local/lib/modules-load.d",
                 "/usr/lib/modules-load.d", "/lib/modules-load.d"]
@@ -137,9 +136,8 @@ class Per07(Check):
                     if state not in ("unpackaged", "modified"):
                         continue
                     cond = [("warning", "모듈 {}를 올릴 때 명령을 실행한다: {}".format(parts[1], cmd[:150]))]
-                    cond += scan_command(cmd)
                     first = cmd.split()[0] if cmd.split() else ""
-                    cond += target_issues(ctx, first)
+                    cond += exec_conditions(ctx, cmd, first)
                     items.append(Item(path, cond, file_evidence(ctx, path, state, pkg) +
                                       [Evidence(path, "{}행: {}".format(no, raw.strip()))]))
 

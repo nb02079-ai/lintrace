@@ -6,13 +6,13 @@ Ubuntu 서버에서 한 번 실행하면 침해 흔적 54개 항목을 점검하
 
 ## 상태
 
-1단계(MVP) 완료, 2단계 진행 중 — 구현 37 / 54 (ACC-01~11, PER-01~09, PRC-01~09, FS-02·04·05·06, LOG-01, NET-01·02·06 · `python3 -m lintrace --list`로 확인)
+1단계(MVP) 완료, 2단계 진행 중 — 구현 48 / 54 (ACC-01~11, PER-01~09, PRC-01~09, FS-01~09, CMD-01~03, LOG-01, NET-01~06 · `python3 -m lintrace --list`로 확인)
 
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
 | 0 | 환경 준비 (정상 VM, 검증용 공개 VM) | 완료 (lin.security, Ubuntu 24.04 + WordPress) |
 | 1 | MVP: 항목 10개 + 텍스트 리포트, 검증 VM 적용 | 완료 — [검증 요약](validation/phase1-summary.md): 심어진 경로 6/6 탐지, 실제 웹 서버 오탐 0 |
-| 2 | 54개 전 항목, JSON 결과, 증거 아카이브 | 진행 중 — 2-0(JSON·증거 아카이브), 2-A(계정·인증 8개), 2-B(프로세스·네트워크 10개), 2-C(지속성·패키지 무결성 9개) 구현 |
+| 2 | 54개 전 항목, JSON 결과, 증거 아카이브 | 진행 중 — 2-0(JSON·증거 아카이브), 2-A(계정·인증 8개), 2-B(프로세스·네트워크 10개), 2-C(지속성·패키지 무결성 9개), 2-D(파일·명령 기록·설정 11개) 구현 |
 | 3 | 타임라인 상관분석, ATT&CK 매핑, 기준선 비교, HTML 리포트 | 예정 |
 | 4 | 종합 검증, 기존 도구 비교, 결과 공개 | 예정 |
 
@@ -61,6 +61,7 @@ lintrace/
                  authlog(auth.log·순환·gz, 18.04·24.04 형식), packages(dpkg 소속·md5sums, usrmerge 별칭),
                  sockets(/proc/net의 tcp·udp·raw·packet·unix + 소켓을 잡은 프로세스),
                  nfs(커널 nfsd·lockd 소켓 포트 — portlist·nlm 포트·rpcbind 등록)
+                 filewalk(파일시스템 한 번 훑기 — SUID·capability·숨김 폴더), history(셸 명령 기록)
   checks/scriptscan.py  스크립트·명령의 의심 패턴 (PER-01·03·04·06·08·09 공용)
   checks/persist.py     패키지 원본 비교·소유자·실행 대상 판정 (2-C 공용)
   report/        리포트 출력 (1단계 텍스트 → 3단계 HTML)

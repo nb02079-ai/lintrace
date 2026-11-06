@@ -17,8 +17,8 @@ import posixpath
 import shlex
 
 from .base import Check, Context, Evidence
-from .persist import (Item, file_evidence, file_state, group, homes, owner_issue, packaged_binary, regular,
-                      target_issues, unique_dirs)
+from .persist import (Item, exec_conditions, file_evidence, file_state, group, homes, owner_issue, packaged_binary,
+                      regular, unique_dirs)
 from .scriptscan import scan_command
 
 SYSTEM_DIRS = ["/etc/systemd/system", "/run/systemd/system", "/usr/local/lib/systemd/system",
@@ -150,8 +150,7 @@ class Per02(Check):
                     if issue:
                         conditions.append(("critical", issue))
                 for _, _, v in execs:
-                    conditions += scan_command(v)
-                    conditions += target_issues(ctx, exec_target(v), runs_as_root)
+                    conditions += exec_conditions(ctx, v, exec_target(v), runs_as_root)
         if not conditions:
             return None
         ev = file_evidence(ctx, path, state, pkg)

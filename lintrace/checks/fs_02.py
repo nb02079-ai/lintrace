@@ -13,8 +13,8 @@ SUID 파일은 누가 실행하든 파일 소유자(대개 root) 권한으로 �
 - 위험: 어떤 패키지에도 속하지 않는 SUID·SGID 파일
 - (탐지 아님) 패키지에 속한 표준 SUID·SGID 파일은 점검 범위에 개수로 표시
 
-검색 범위: 파일시스템 전체. /proc, /sys, /run, /dev(/dev/shm은 포함), /snap,
-네트워크·가상 파일시스템은 뺀다. 링크는 따라가지 않는다.
+검색 범위: 파일시스템 전체 (collectors/filewalk.py — FS-03·08과 한 번의 훑기를 같이 쓴다).
+/proc, /sys, /run, /dev(/dev/shm은 포함), /snap, 네트워크·가상 파일시스템은 뺀다. 링크는 따라가지 않는다.
 패키지 소속은 /var/lib/dpkg/info/*.list로 판단하고, /bin → /usr/bin 같은 usrmerge 경로를 맞춘다.
 패키지 원본과 해시가 다른지(바꿔치기)는 FS-04가 본다.
 SUID를 붙이면 mtime은 그대로이고 ctime만 바뀌므로 근거에 둘 다 보인다.
@@ -25,20 +25,10 @@ import re
 import stat
 
 from .. import timefmt
+from ..collectors.filewalk import EXTRA_ROOTS, SKIP_FSTYPES, STATIC_EXCLUDE, filewalk, unescape_mount  # noqa: F401
 from ..collectors.packages import packages, path_aliases  # noqa: F401 (path_aliases는 테스트가 씀)
 from .base import Check, Context, Evidence, Unavailable
 
-STATIC_EXCLUDE = ("/proc", "/sys", "/run", "/dev", "/snap")
-EXTRA_ROOTS = ("/dev/shm",)  # /dev를 빼도 공격자가 자주 쓰는 /dev/shm은 본다
-SKIP_FSTYPES = {
-    # 네트워크
-    "nfs", "nfs4", "cifs", "smb3", "smbfs", "fuse.sshfs", "sshfs", "9p", "ceph", "glusterfs",
-    "fuse.glusterfs", "davfs", "fuse.davfs2", "afs", "lustre",
-    # 가상
-    "proc", "sysfs", "cgroup", "cgroup2", "debugfs", "tracefs", "securityfs", "pstore", "bpf",
-    "autofs", "mqueue", "hugetlbfs", "configfs", "fusectl", "binfmt_misc", "devpts", "efivarfs",
-    "devtmpfs", "rpc_pipefs", "nsfs", "selinuxfs",
-}
 USER_AREAS = ("/tmp/", "/var/tmp/", "/dev/shm/", "/home/", "/var/www/")
 SHELL_BINARIES = ["/bin/bash", "/bin/dash", "/bin/sh", "/bin/zsh", "/usr/bin/zsh", "/bin/ksh",
                   "/usr/bin/ksh", "/bin/busybox", "/usr/bin/fish", "/bin/tcsh", "/bin/csh", "/bin/mksh"]
@@ -70,11 +60,6 @@ def norm_name(path):
     return re.sub(r"\d+$", "", base.split(".")[0])
 
 
-def unescape_mount(s):
-    """/proc/mounts의 '\\040' 같은 8진수 표기를 푼다."""
-    return re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), s)
-
-
 def who_can_run(mode, group):
     if mode & stat.S_IXOTH:
         return "누구나 실행 가능"
@@ -90,17 +75,8 @@ class Fs02(Check):
     attack = "T1548.001"
 
     def run(self, ctx: Context):
-        excluded = set(STATIC_EXCLUDE)
-        for line in ctx.read_lines("/proc/mounts", missing_ok=True):
-            parts = line.split()
-            if len(parts) >= 3 and parts[2] in SKIP_FSTYPES:
-                excluded.add(unescape_mount(parts[1]))
-        excluded.discard("/")
-
-        self.files_seen, denied, candidates = 0, [], []
-        roots = ["/"] + [r for r in EXTRA_ROOTS if ctx.stat(r, follow=True) is not None]
-        for start in roots:
-            self.walk(ctx, start, excluded if start == "/" else set(), candidates, denied)
+        w = filewalk(ctx)
+        self.files_seen, denied, candidates = w.files_seen, w.denied, list(w.suid)
         if denied and os.geteuid() != 0:
             raise Unavailable("디렉터리 {}개를 읽을 권한 없음 (root로 실행 필요)".format(len(denied)))
 
@@ -113,7 +89,6 @@ class Fs02(Check):
         groups = self.group_names(ctx)
         users = self.user_names(ctx)
 
-        candidates.sort(key=lambda c: c[0])  # 디렉터리를 읽는 순서와 관계없이 같은 결과
         findings, packaged = [], 0
         for path, st in candidates:
             pkg = packages.get(path) if packages is not None else None
@@ -129,31 +104,6 @@ class Fs02(Check):
         if denied:
             self.scope += ", root로도 읽지 못한 디렉터리 {}개: {}".format(len(denied), ", ".join(denied[:5]))
         return findings
-
-    def walk(self, ctx, start, excluded, candidates, denied):
-        stack = [start]
-        while stack:
-            logical = stack.pop()
-            try:
-                entries = list(os.scandir(ctx.path(logical)))
-            except PermissionError:
-                denied.append(logical)
-                continue
-            except (FileNotFoundError, NotADirectoryError):
-                continue  # 그사이 사라짐
-            for entry in entries:
-                child = posixpath.join(logical, entry.name)
-                try:
-                    st = entry.stat(follow_symlinks=False)
-                except OSError:
-                    continue
-                if stat.S_ISDIR(st.st_mode):
-                    if child not in excluded:
-                        stack.append(child)
-                elif stat.S_ISREG(st.st_mode):
-                    self.files_seen += 1
-                    if st.st_mode & (stat.S_ISUID | stat.S_ISGID):
-                        candidates.append((child, st))
 
     @staticmethod
     def owning_packages(ctx, paths):

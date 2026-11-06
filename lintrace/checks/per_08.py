@@ -13,11 +13,10 @@ import posixpath
 import re
 
 from .base import Check, Context, Evidence
-from .persist import Item, file_evidence, file_state, group, owner_issue, regular, target_issues, unique_dirs
-from .scriptscan import scan_command
+from .persist import Item, exec_conditions, file_evidence, file_state, group, owner_issue, regular, unique_dirs
 
 DIRS = ["/etc/udev/rules.d", "/run/udev/rules.d", "/lib/udev/rules.d", "/usr/lib/udev/rules.d"]
-KEY = re.compile(r"\b(RUN(?:\{(program|builtin)\})?|PROGRAM|IMPORT\{program\})\s*\+?=\s*\"([^\"]*)\"")
+KEY = re.compile(r"\b(RUN(?:\{(program|builtin)\})?|PROGRAM|IMPORT\{program\})\s*(\+?=)\s*\"([^\"]*)\"")
 UDEV_LIB = ("/usr/lib/udev", "/lib/udev")
 
 
@@ -31,7 +30,7 @@ def commands(lines):
         for m in KEY.finditer(s):
             if m.group(2) == "builtin":
                 continue
-            out.append((no, m.group(1), m.group(3)))
+            out.append((no, m.group(1) + m.group(3), m.group(4)))
     return out
 
 
@@ -76,16 +75,14 @@ class Per08(Check):
                 if issue:
                     cond.append(("critical", issue))
                 for _, _, cmd in cmds:
-                    cond += scan_command(cmd)
                     first = cmd.split()[0] if cmd.split() else ""
-                    if first:
-                        cond += target_issues(ctx, resolve(ctx, first))
+                    cond += exec_conditions(ctx, cmd, resolve(ctx, first) if first else "")
                 uniq = []
                 for c in cond:
                     if c not in uniq:
                         uniq.append(c)
                 items.append(Item(path, uniq, file_evidence(ctx, path, state, pkg) +
-                                  [Evidence(path, "{}행: {}=\"{}\"".format(no, k, c[:150])) for no, k, c in cmds[:6]]))
+                                  [Evidence(path, "{}행: {}\"{}\"".format(no, k, c[:150])) for no, k, c in cmds[:6]]))
         findings = group(self, items, "규칙이 어떤 장치 이벤트에 무엇을 실행하는지 확인한다. 필요 없으면 규칙 파일을 보존한 뒤(--out) "
                                       "지우고 'udevadm control --reload'.", "udev 규칙")
         self.scope = "규칙 파일 {}개 (패키지 밖·원본과 다름 {}개)".format(files, foreign)

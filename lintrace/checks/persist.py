@@ -230,3 +230,13 @@ def executable(ctx, path):
     except Unavailable:
         return False
     return st is not None and stat.S_ISREG(st.st_mode) and bool(st.st_mode & 0o111)
+
+
+def exec_conditions(ctx, command, target, runs_as_root=True):
+    """명령 내용 검사 + 실행 대상 판정. 내용 검사가 이미 같은 경로의 임시·숨김 위치를 말했으면 중복을 뺀다."""
+    from .scriptscan import scan_command
+    scanned = scan_command(command)
+    located = target_issues(ctx, target, runs_as_root) if target else []
+    if target and any(target in text for _, text in scanned):
+        located = [c for c in located if "임시 폴더" not in c[1] and "숨김 경로" not in c[1]]
+    return scanned + located

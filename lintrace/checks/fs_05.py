@@ -18,7 +18,7 @@ from ..collectors.packages import packages
 from .base import Check, Context, Evidence, Unavailable
 from .persist import Item, file_evidence, group, target_issues, unique_dirs
 
-SYSTEM = ["/bin", "/sbin", "/usr/bin", "/usr/sbin"]
+SYSTEM = ["/usr/bin", "/usr/sbin", "/bin", "/sbin"]  # usrmerge면 /bin은 /usr/bin과 같은 곳 — 실제 경로로 표시
 LOCAL = ["/usr/local/bin", "/usr/local/sbin"]
 SHELLS = ["/bin/bash", "/bin/dash", "/bin/sh", "/bin/zsh", "/bin/ksh", "/bin/csh", "/bin/tcsh", "/bin/busybox",
           "/usr/bin/bash", "/usr/bin/dash", "/usr/bin/zsh", "/usr/bin/busybox"]
