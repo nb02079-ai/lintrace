@@ -192,6 +192,21 @@ Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 
 | `auth sufficient pam_permit.so`를 /etc/pam.d/sshd 맨 앞에 | ACC-11 심각 | 일치 — deny 앞 sufficient |
 | pam_permit.so를 pam_snoop.so로 복사해 common-auth에서 부름 | ACC-11 심각 | 일치 — 패키지 밖 모듈 (usrmerge 경로 /usr/lib/…로 해석) |
 | 127.0.0.1에서 SSH 로그인 | ACC-09 참고 | 일치 — 이전 출처 192.168.16.18(3회) |
-| SSH 실패 6회 뒤 성공 | ACC-08 심각 | **미검증** — ssh 명령 세 줄을 한 번에 붙여넣어 첫 접속에서 바로 로그인됨 (실패 0건). 재시험 필요 |
+| SSH 실패 6회 뒤 성공 | ACC-08 심각 | 재시험에서 일치 (아래) |
 
 PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC-08 재시험은 `web-baseline` 복원 뒤 따로 한다.
+
+### ACC-08 재시험 (2026-11-06)
+
+첫 재시험은 VM을 복원하지 않은 채 진행돼, 위에서 넣은 PAM 뒷문(`auth sufficient pam_permit.so`) 때문에 **틀린 비밀번호로도 SSH 로그인이 성공**했다 (SSH 성공 4건 → 9건, 실패 0건). ACC-11이 잡은 뒷문이 실제로 동작함을 보여준 셈이다. 이때 `grep -c 'Failed password'`가 1을 낸 것은 sshd 기록이 아니라 sudo가 남긴 그 grep 명령 줄이었다 — 로그를 셀 때는 `sshd.*Failed password`로 프로그램까지 맞춘다.
+
+`web-baseline` 복원 후 `ssh -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 test@127.0.0.1`을 틀린 비밀번호로 6번, 맞는 비밀번호로 1번:
+
+| 확인 | 결과 |
+| --- | --- |
+| ACC-08 | 심각: "127.0.0.1에서 SSH 로그인 실패 6회 뒤 'test' 계정으로 로그인 성공 (password)" |
+| 근거 | 첫 실패 122행(01:04:01), 마지막 실패 137행(01:04:36), 성공 139행(01:04:40), "실패 6회, 시도한 계정 1개: test" |
+| ACC-10·11 | 이상 없음 (복원 확인) |
+| ACC-09 | 참고 (127.0.0.1 새 출처) |
+
+2-A 8개 항목 두 VM 확인 완료.
