@@ -130,6 +130,26 @@ SUID·SGID 파일 39개, 모두 패키지 소속. 그중 둘은 패키지가 SUI
 
 기대: 2-B 10개 항목 탐지 없음. NFS 커널 소켓은 프로세스가 없어도 정상으로 처리해야 함.
 
+
+## 19차 적용 — 2-B (`db87e47`, 2026-11-06)
+
+기준선(`original`): 1·2단계 탐지 10건은 그대로(권한 상승 경로 7 / 7). 2-B에서 **NET-01 오탐 8건**:
+- tcp 2049·35797, tcp6 2049·44687, udp 2049·41351, udp6 2049·58994 — "inode가 있는데 어느 프로세스의 것도 아니다"
+- 원인: 2-B 설계 때 NFS 커널 소켓의 inode가 0이라고 보고 inode 0만 커널 소켓으로 뺐는데, 실제로는 nfsd·lockd가 연 소켓도 inode가 있다(파일 설명자만 없음). 정답 자료에는 포트만 있었고 inode는 확인하지 않았다
+- lockd 포트는 부팅마다 바뀐다 (정답 수집 때 40155·44349·34056·43427 → 이번 35797·44687·41351·58994) — 포트 번호로 뺄 수 없음
+- 나머지 2-B 항목은 탐지 없음. PRC-05 /proc 109개·ps 110개, PRC-06 2개(네트워크 관리 데몬 1개 제외)
+
+양성 (root 셸):
+
+| 시험 | 결과 |
+| --- | --- |
+| `nc -lnv 4444` | NET-01 위험 일치 |
+| 리버스 셸 | 재현 안 됨 — 24.04 주소(192.168.16.69)로 접속해 "Network is unreachable" |
+| memfd | 재현 안 됨 — Python 3.6에 `os.memfd_create` 없음 (3.8부터) |
+| `exec -a "[kworker/0:9]" sleep` | PRC-04 심각 일치 |
+| `LD_PRELOAD=/tmp/.l/libh.so sleep` | PRC-07 위험 일치 |
+| `tcpdump -i enp0s3` | PRC-06·NET-06 위험 일치 (root 그대로 실행) |
+
 ## 2차 적용 (같은 날, 커밋 58982a3)
 
 구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
@@ -436,3 +456,4 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 20. 2-A 정답 확인 `sudo /bin/bash` 셸 1회 (`/etc/passwd`·`shadow`·`group`, auth.log, sshd 설정, `/etc/pam.d`, `dpkg -S`·`--verify`)
 21. 18차 적용 도구 실행 1회 (`sudo /bin/bash -c`)
 22. 2-B 정답 확인 `sudo /bin/bash` 셸 1회 (`ss`, `/proc/*/exe·cmdline·environ·fd`, `ps`, `/sys/class/net`)
+23. 19차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, nc·sleep·tcpdump 실행). 이후 스냅샷 복원

