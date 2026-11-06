@@ -241,3 +241,9 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 | `sudo tcpdump -i enp0s3` | PRC-06·NET-06 위험 | 일치 — tcpdump(계정 tcpdump로 권한 낮춤) packet 소켓, enp0s3 flags 0x1103 |
 
 8 / 8 일치. 이후 `web-baseline` 복원.
+
+## 8차 적용 — 2-B 보정 (`84da293`, 2026-11-06)
+
+기준선(`web-baseline`): 판정 정상, 탐지 2건 (LOG-01 참고 — 스냅샷 복원 NUL 구간). 2-B 탐지 없음, 리스닝 9개 정답과 일치. 보정(NFS 판별)은 이 VM에 nfsd·lockd 모듈이 없어 영향 없음.
+
+2-B 10개 항목 두 VM 확인 완료.

