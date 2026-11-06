@@ -383,6 +383,21 @@ FS-02가 훑은 파일 수는 94,683개 (12차 94,722개 — 도구 폴더 복�
 
 이후 `original` 복원.
 
+## 18차 적용 — 2-A 계정·인증 (커밋 16b04fa, 코드 해시 5317789b…)
+
+단위 테스트 183개 통과 (bob 27개 건너뜀). 실행한 점검 18개, 탐지 10건 — 정답 기대와 모두 일치.
+
+| 항목 | 결과 |
+| --- | --- |
+| 기존 6건 (ACC-01, ACC-06 ×2, PER-01, FS-02 ×2) | 그대로 |
+| ACC-02 | 위험: `insecurity` — shadow에 항목 없음 |
+| ACC-04 | 위험: `insecurity` — passwd에 해시 직접(DES 13자, 내용은 보이지 않음) |
+| ACC-05 | 위험: `peter` docker 그룹 — 근거에 "ACC-06에서도 탐지" 교차 표시 |
+| ACC-10 | 참고: `PermitRootLogin yes` |
+| ACC-03·08·09·11 | 탐지 없음 (SSH 성공 2건·실패 0건, PAM 설정 25개·모듈 21개 모두 패키지 소속·해시 일치) |
+
+lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 그룹 = **7 / 7 탐지**.
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
@@ -407,3 +422,4 @@ FS-02가 훑은 파일 수는 94,683개 (12차 94,722개 — 도구 폴더 복�
 18. 15차 적용 도구 실행 1회, 16차 적용 `sudo /bin/bash` 셸 1회 (auth.log 줄 삭제, rsyslog 재시작, syslog 비우기, kern.log 삭제, 도구 2회). 이후 스냅샷 복원
 19. 17차 적용 `sudo /bin/bash` 셸 1회 (도구 2회, `sha256sum -c`, auth.log 줄 삭제, `grep`). 이후 스냅샷 복원
 20. 2-A 정답 확인 `sudo /bin/bash` 셸 1회 (`/etc/passwd`·`shadow`·`group`, auth.log, sshd 설정, `/etc/pam.d`, `dpkg -S`·`--verify`)
+21. 18차 적용 도구 실행 1회 (`sudo /bin/bash -c`)

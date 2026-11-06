@@ -174,3 +174,24 @@ Ubuntu 24.04 + WordPress 검증 정리: 아무것도 심지 않은 상태에서 
 - journal에도 같은 sshd 기록이 있음 (`journalctl -u ssh`) — 2-E에서 사용
 
 도구 설계 반영: 인증 로그 해석기는 NUL을 건너뛰고 끝까지 읽는다. LOG-01은 앞부분 NUL만 보므로 이 상태는 탐지하지 않는다 (중간 NUL 처리는 결정 대기).
+
+## 6차 적용 — 2-A 계정·인증 (커밋 16b04fa, 코드 해시 5317789b…)
+
+기준선: 전체 판정 **정상**, 실행한 점검 18개. 2-A 8개 항목 모두 이상 없음 (ACC-05 범위 `lxd(test), sudo(test)`, ACC-08 SSH 실패 0·성공 3, ACC-11 PAM 설정 21개·모듈 18개).
+참고 2건(판정 영향 없음): LOG-01 중간 NUL — `auth.log` 3곳(3,077B), `syslog` 3곳(4,964B). 세 구간 모두 바로 뒤 줄이 부팅 메시지(`systemd-logind: New seat seat0`, `systemd-modules-load`)이고 시각이 스냅샷 복원 시각(11-03 01:38, 11-03 01:43, 11-06 00:39)과 맞아 복원 흔적으로 확인.
+
+양성 확인 (root 셸에서 계정·설정을 바꾼 뒤 실행): 탐지 10건
+
+| 조작 | 기대 | 결과 |
+| --- | --- | --- |
+| `echo 'backup2:x:1002:1002::/tmp:/bin/bash' >> /etc/passwd` | ACC-02 위험 | 일치 — shadow 항목 없음 + 그룹 1002 없음 |
+| `usermod -s /bin/bash www-data` | ACC-03 위험 | 일치 |
+| `usermod -p "$(openssl passwd -1 …)" www-data` | ACC-04 위험 | 일치 — MD5 형식 34자 |
+| `usermod -aG disk www-data` | ACC-05 위험 | 일치 |
+| `PermitEmptyPasswords yes` (sshd_config.d/00-test.conf) | ACC-10 위험 | 일치 — Include 파일에서 찾음 |
+| `auth sufficient pam_permit.so`를 /etc/pam.d/sshd 맨 앞에 | ACC-11 심각 | 일치 — deny 앞 sufficient |
+| pam_permit.so를 pam_snoop.so로 복사해 common-auth에서 부름 | ACC-11 심각 | 일치 — 패키지 밖 모듈 (usrmerge 경로 /usr/lib/…로 해석) |
+| 127.0.0.1에서 SSH 로그인 | ACC-09 참고 | 일치 — 이전 출처 192.168.16.18(3회) |
+| SSH 실패 6회 뒤 성공 | ACC-08 심각 | **미검증** — ssh 명령 세 줄을 한 번에 붙여넣어 첫 접속에서 바로 로그인됨 (실패 0건). 재시험 필요 |
+
+PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC-08 재시험은 `web-baseline` 복원 뒤 따로 한다.
