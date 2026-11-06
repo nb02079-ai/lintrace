@@ -9,6 +9,8 @@ from ..collectors.packages import packages
 from .prc_01 import odd_location
 from .prc_03 import interpreter_name
 
+NET_DAEMONS = {"systemd-networkd", "dhclient", "dhcpcd", "NetworkManager", "wpa_supplicant", "lldpd",
+               "systemd-networ", "dhcpd", "radvd", "keepalived"}
 NET_TOOLS = {"nc", "ncat", "netcat", "nc.traditional", "nc.openbsd", "socat", "cryptcat", "pwncat"}
 SHELLS = {"sh", "bash", "dash", "zsh", "ksh", "ash", "busybox"}
 
@@ -40,3 +42,8 @@ def suspicious(ctx, p):
         if db.available and not p.deleted and db.owner(p.exe_path) is None:
             why.append("실행 파일이 패키지에 속하지 않음")
     return why
+
+
+def net_daemon(ctx, p):
+    """패키지에 속한 네트워크 관리 데몬인지 (PRC-06 예외, NET-06 근거 순서)."""
+    return exe_name(p) in NET_DAEMONS and not p.deleted and packages(ctx).owner(p.exe_path or "") is not None

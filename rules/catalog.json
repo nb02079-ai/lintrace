@@ -272,7 +272,7 @@
   {
     "id": "NET-02",
     "area": "NET",
-    "name": "외부로 나가는 의심 연결",
+    "name": "의심 프로세스의 외부 연결",
     "severity": "warning",
     "attack": "T1071",
     "phase": 2,

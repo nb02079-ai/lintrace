@@ -9,6 +9,7 @@ IFF_PROMISC(0x100)를 본다.
 from ..collectors.processes import processes
 from ..collectors.sockets import sockets
 from .base import Check, Context, Evidence
+from .procnet import net_daemon
 
 IFF_PROMISC = 0x100
 NET = "/sys/class/net"
@@ -36,10 +37,15 @@ class Net06(Check):
                 continue
             ev = [Evidence("{}/{}/flags".format(NET, name), "flags {} (IFF_PROMISC 0x100 켜짐)".format(lines[0]))]
             processes(ctx)  # packet 소켓의 주인을 찾으려면 프로세스 표가 필요하다
+            owners, seen = [], set()
             for s in sockets(ctx).of(("packet",)):
                 for p, fd in s.owners:
-                    ev.append(Evidence("/proc/{}".format(p.pid), "packet 소켓을 연 프로세스: PID {} {} ({})".format(
-                        p.pid, p.name, p.cmdline)))
+                    if p.pid not in seen:
+                        seen.add(p.pid)
+                        owners.append((net_daemon(ctx, p), int(p.pid), p))
+            for daemon, _, p in sorted(owners, key=lambda x: (x[0], x[1])):  # 예외 데몬은 뒤로
+                ev.append(Evidence("/proc/{}".format(p.pid), "packet 소켓을 연 프로세스: PID {} {} ({}){}".format(
+                    p.pid, p.name, p.cmdline, " — 네트워크 관리 데몬" if daemon else "")))
             findings.append(self.finding(
                 reason="인터페이스 {}가 promiscuous 모드다 — 다른 호스트로 가는 패킷까지 받는 스니퍼가 돌고 있을 수 있다".format(name),
                 next_steps="packet 소켓을 연 프로세스(PRC-06)를 확인하고, 정상 도구(tcpdump 등)가 아니면 실행 파일을 보존한다.",

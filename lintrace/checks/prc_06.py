@@ -8,14 +8,10 @@ raw·packet 소켓은 패킷을 직접 읽고 쓴다. 스니퍼(비밀번호 가
 두 검증 VM 모두 systemd-networkd만 있었음). tcpdump 같은 수집 도구는 패키지라도 위험으로 낸다
 (스니퍼가 돌고 있다는 사실 자체가 확인할 거리).
 """
-from ..collectors.packages import packages
 from ..collectors.processes import describe, processes
 from ..collectors.sockets import sockets
 from .base import Check, Context, Evidence
-from .procnet import exe_name
-
-NET_DAEMONS = {"systemd-networkd", "dhclient", "dhcpcd", "NetworkManager", "wpa_supplicant", "lldpd",
-               "systemd-networ", "dhcpd", "radvd", "keepalived"}
+from .procnet import NET_DAEMONS, net_daemon  # noqa: F401 (NET_DAEMONS는 예전 위치에서도 쓸 수 있게)
 
 
 class Prc06(Check):
@@ -28,7 +24,6 @@ class Prc06(Check):
         table = processes(ctx)
         table.require_access()
         socks = sockets(ctx).of(("raw", "packet"))
-        db = packages(ctx)
         by_proc, allowed, orphan = {}, 0, 0
         for s in socks:
             if not s.owners:
@@ -38,8 +33,7 @@ class Prc06(Check):
         findings = []
         for pid in sorted(by_proc, key=int):
             p, items = by_proc[pid]
-            name = exe_name(p)
-            if name in NET_DAEMONS and db.owner(p.exe_path or "") and not p.deleted:
+            if net_daemon(ctx, p):
                 allowed += 1
                 continue
             findings.append(self.finding(

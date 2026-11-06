@@ -58,7 +58,8 @@ lintrace/
   checks/        점검 항목 (항목 하나 = 파일 하나, base.py가 공통 틀)
   collectors/    여러 항목이 공유하는 수집기 — processes(프로세스·열린 파일), accounts(passwd·shadow·group),
                  authlog(auth.log·순환·gz, 18.04·24.04 형식), packages(dpkg 소속·md5sums, usrmerge 별칭),
-                 sockets(/proc/net의 tcp·udp·raw·packet·unix + 소켓을 잡은 프로세스)
+                 sockets(/proc/net의 tcp·udp·raw·packet·unix + 소켓을 잡은 프로세스),
+                 nfs(커널 nfsd·lockd 소켓 포트 — portlist·nlm 포트·rpcbind 등록)
   report/        리포트 출력 (1단계 텍스트 → 3단계 HTML)
 rules/catalog.json   54개 항목 목록 (ID, 위험도, ATT&CK, 구현 단계)
 tests/           항목별 단위 테스트와 가짜 파일시스템 fixture
