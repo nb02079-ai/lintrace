@@ -327,3 +327,26 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 - rsyslog·journald active, journald.conf 기본, /var/log/journal 있음(영구 저장) — 부팅 4개(11-03 세 번, 11-09), 56MB
 - 커널 err: RETBleed 경고, vmwgfx(VirtualBox 그래픽) 오류 — 네트워크 무관
 - 기록 간격: 이번 부팅 최대 120초, 이전 부팅(약 20분) 최대 227초, 1분 넘게 거꾸로 간 기록 0, 미래 시각 파일 없음
+
+
+## 11차 적용 — 2-E (`ba13c0d`, 2026-11-09)
+
+기준선(`web-baseline`) 겸 양성: 탐지 7건 = 기준선 참고 3건(FS-07, LOG-01×2) + 2-E 양성 4건. 2-E 다른 항목 탐지 없음.
+- ACC-08·09 범위에 "journal 보충 1건" — auth.log에 없는 sshd 기록 1건을 journal에서 가져옴 (연동 확인)
+- LOG-02 범위 "wtmp 로그인 1건, 시작 2026-11-03 01:37:07" — utmp struct 정렬 수정이 실제 wtmp에서도 맞음
+- LOG-05 범위 "부팅 4개, 최대 공백 1·83·227·150초" 모두 기준(2시간) 아래 → 정상
+- LOG-07 커널 기록 2,223건 중 crash 0건 (vmwgfx·RETBleed는 crash 아님) → 정상
+
+양성 (root 셸, 한 줄씩) — 4 / 4 일치:
+
+| 시험 | 기대 | 결과 |
+| --- | --- | --- |
+| utmpdump로 wtmp 마지막 레코드 제거 | LOG-02 심각 | 일치 — auth.log·journal의 로그인 2건이 wtmp에 없음 |
+| `ln -sf /dev/null ~/.zsh_history` | LOG-03 위험 | 일치 |
+| `systemctl mask --now rsyslog` | LOG-04 심각 | 일치 — /dev/null 마스크 |
+| `touch -d 2027-06-01 /etc/cron.d/.sysupdate` | LOG-06 위험 | 일치 — "약 6개월 뒤" |
+
+LOG-05(로그 공백)·LOG-07(커널 oops)은 재현에 몇 시간·커널 취약점이 필요해 단위 테스트로만 확인, 기준선에서 안 나오는 것만 봄.
+되돌리기: `systemctl unmask rsyslog`, wtmp.bak 복구, 심볼릭 링크·미래 파일 삭제 — 또는 스냅샷 복원.
+
+2-E 6개 항목 확인 (24.04 양성 + lin.security 기준선 대기). **2단계 54/54 완료.**
