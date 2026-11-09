@@ -467,6 +467,17 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 - /etc/hosts 기본(localhost.localdomain 형식), resolv.conf → resolved 스텁, resolved.conf 기본
 - iptables: Docker 체인(DOCKER·DOCKER-USER·DOCKER-ISOLATION-STAGE-1·2)과 docker0 대역 MASQUERADE뿐, DNAT·REDIRECT 없음. nft 미설치, /etc/iptables·nftables.conf 없음, ufw inactive
 
+
+## 22차 적용 — 2-D (`1209bf1`, 코드 해시 181f866a…, 2026-11-09)
+
+복사 절차 6번(NUL 검사 0개) 포함. 기준선(`original`): 탐지 14건 — 2-C 때와 같음(권한 상승 경로 8 / 8), **2-D 11개 항목 탐지 없음**
+- FS-03: capability 1개(패키지 원본 mtr-packet) 정상
+- FS-08: 숨김 폴더 9개 모두 정상 (/tmp X 폴더, vdso/.build-id, linux-headers/.tmp_versions)
+- FS-09: 핵심 위치 2,295개, 속성을 지원하지 않는 파일시스템 1개(tmpfs로 보임)
+- NET-03 hosts 7개 항목 정상, NET-04 resolved 스텁, NET-05 iptables Docker 규칙만(15줄) — nft 미설치라 iptables만
+- CMD 명령 기록 0개, 웹 로그 0개 — 정답과 일치
+이후 `original` 복원
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.

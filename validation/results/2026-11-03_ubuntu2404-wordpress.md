@@ -317,3 +317,5 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 | iptables REDIRECT 80→22 | NET-05 위험 | 일치 — iptables-save·nft 양쪽에 같은 규칙 (iptables-nft) |
 
 표시 개선 3건 반영 대기: FS-01 문구 조사, FS-01 교차 표시(PRC-01 → PRC-03), NET-05 같은 규칙 두 출력 표시.
+
+2-D 11개 항목 두 VM 확인 완료 (lin.security 22차 기준선 탐지 없음).
