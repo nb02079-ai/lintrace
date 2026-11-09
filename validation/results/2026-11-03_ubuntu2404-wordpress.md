@@ -293,3 +293,27 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 - /etc/hosts 기본(127.0.1.1 test), resolv.conf → systemd-resolved 스텁(127.0.0.53), resolved.conf 기본
 - iptables 규칙 없음, /etc/nftables.conf(패키지), ufw inactive
 - 주의: 처음 받은 정답은 WordPress 설치 전 스냅샷 상태였음(/var/www에 html만, access.log 0바이트) — `web-baseline` 복원 후 웹 부분 다시 받음
+
+## 10차 적용 — 2-D (`1209bf1`, 2026-11-09)
+
+- 사고: 금요일(11-06)에 풀어 둔 도구 파일 28개가 월요일에 NUL로 깨져 `SyntaxError: source code string cannot contain null bytes`. 깨진 파일은 1단계부터 있던 파일뿐, 묶음(tgz) 해시는 호스트와 같음 → VM 디스크에 다 쓰기 전에 VM이 멈춘 것으로 보임. 다시 풀고 NUL 0개·코드 해시 181f866a… 확인 후 실행. 복사 절차에 NUL 검사·종료 전 sync 추가
+- 기준선은 금요일 2-C 적용 때와 같은 스냅샷(`web-baseline`) — 2-D 기준선은 FS-07 참고 1건 기대 (이번 실행에서 FS-07 참고 1건 확인: 스크립트 1,524개 중 1,523개 www-data 소유, s.php만 root)
+
+양성 (root·test 셸, 한 줄씩) — 10 / 10 일치:
+
+| 시험 | 기대 | 결과 |
+| --- | --- | --- |
+| /tmp/.k/kworker(sleep 복사) 실행 | FS-01 심각 | 일치 — 숨김 경로·실행 중 (PRC-03 심각도 함께) |
+| /opt/python3에 cap_setuid+ep | FS-03 심각 | 일치 — 셸 탈출 + setuid, 패키지 밖. 범위에 패키지 원본 4개(mtr-packet·ping·snap-confine·gst-ptp-helper) 정상 |
+| mkdir "/usr/share/..." | FS-08 심각 | 일치 — 눈속임 이름 (/tmp/.k도 함께, 한 건으로 묶임) |
+| chattr +i /root/.ssh/authorized_keys | FS-09 심각 | 일치 (플래그 0x80010) |
+| 명령 기록 wget → chmod +x → ./kinsing | CMD-01 심각 | 일치 — 16·17·18행 연쇄 |
+| 명령 기록 bash -i >& /dev/tcp | CMD-02 심각 | 일치 (root의 printf 명령 자체도 /dev/tcp 문자열로 심각 — 리버스 셸을 파일에 써 넣은 명령이라 맞는 탐지로 봄) |
+| /var/www/.bash_history | CMD-02 위험 | 일치 — 서비스 계정 www-data |
+| UNION SELECT·../etc/passwd·sqlmap UA 요청 | CMD-03 위험 3건 | 일치 (경로 조작은 301 응답이어도 시도로 셈) |
+| uploads/s.php 웹쉘 + ?c=id 요청 200 | CMD-03 심각 + FS-06 심각 | 일치 |
+| hosts security.ubuntu.com → 10.0.0.66 | NET-03 위험 | 일치 |
+| resolv.conf 일반 파일 203.0.113.53 | NET-04 위험 | 일치 — 알려진 DNS 8.8.8.8·8.8.4.4와 비교 |
+| iptables REDIRECT 80→22 | NET-05 위험 | 일치 — iptables-save·nft 양쪽에 같은 규칙 (iptables-nft) |
+
+표시 개선 3건 반영 대기: FS-01 문구 조사, FS-01 교차 표시(PRC-01 → PRC-03), NET-05 같은 규칙 두 출력 표시.

@@ -16,6 +16,7 @@ VM에 도구를 복사하는 방법 (호스트가 Windows일 때):
 3. 호스트: `certutil -hashfile lintrace.tgz SHA256` → `scp`
 4. VM: `sha256sum`으로 전송 확인 → `tar tzf ~/lintrace.tgz > /dev/null`로 묶음 검사 → 풀기 → `sync`
 5. VM: `git checkout -- .` (빠진 `test_fs_06.py`를 저장소 기록에서 복구) → 코드 해시 확인
+6. VM: 실행 전 NUL 검사 `grep -rlaP '\x00' --include='*.py' . | wc -l` → 0이어야 함. VM을 끄거나 상태 저장·스냅샷 전에 `sync` 한 번 더 (2026-11-09 — 금요일에 풀어 둔 파일 28개가 월요일에 NUL로 깨져 있었음, 묶음 해시는 정상)
 
 같은 코드인지는 커밋이 아니라 파일 해시로 확인한다 (results/2026-11-03_ubuntu2404-wordpress.md).
 
