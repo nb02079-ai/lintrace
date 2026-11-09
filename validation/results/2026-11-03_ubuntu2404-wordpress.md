@@ -319,3 +319,11 @@ PAM 뒷문을 넣은 상태에서는 아무 비밀번호나 통과하므로, ACC
 표시 개선 3건 반영 대기: FS-01 문구 조사, FS-01 교차 표시(PRC-01 → PRC-03), NET-05 같은 규칙 두 출력 표시.
 
 2-D 11개 항목 두 VM 확인 완료 (lin.security 22차 기준선 탐지 없음).
+
+## 2-E 로그 계열 정답 (2026-11-09, `web-baseline`)
+
+- wtmp 7,296바이트(11-03 01:37부터, 부팅·test 로그인과 일치), btmp 1,152바이트(11-03 bob 실패 3건 — ACC-08 시험), lastlog 292,292바이트
+- 명령 기록: /home/test/.bash_history 842바이트, /root 없음
+- rsyslog·journald active, journald.conf 기본, /var/log/journal 있음(영구 저장) — 부팅 4개(11-03 세 번, 11-09), 56MB
+- 커널 err: RETBleed 경고, vmwgfx(VirtualBox 그래픽) 오류 — 네트워크 무관
+- 기록 간격: 이번 부팅 최대 120초, 이전 부팅(약 20분) 최대 227초, 1분 넘게 거꾸로 간 기록 0, 미래 시각 파일 없음

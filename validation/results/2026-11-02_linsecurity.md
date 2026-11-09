@@ -478,6 +478,16 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 - CMD 명령 기록 0개, 웹 로그 0개 — 정답과 일치
 이후 `original` 복원
 
+
+## 2-E 로그 계열 정답 (2026-11-09, `original`)
+
+- wtmp 1,920바이트 — 이번 부팅(05:14:49)부터 시작, btmp 0바이트, lastlog 292,292바이트(UID 크기만큼 희소 파일). 인증 로그도 같은 시점부터라 기록끼리 어긋나지 않음 (배포 전 /var/log를 비운 영향)
+- 명령 기록 파일 없음 (/etc/profile의 `unset HISTFILE` — PER-04)
+- rsyslog·journald active, journald.conf 기본, /var/log/journal 없음 → 메모리 전용 journal(18.04 기본값), 부팅 1개만 남음(4.9MB)
+- 커널 err 이상 기록 없음
+- 이번 부팅(약 5분) 안 최대 기록 간격 2.6초, 1분 넘게 거꾸로 간 기록 0, 미래 시각 파일 없음
+- 정답 명령 주의: 18.04 journalctl은 `-- Logs begin at …` 머리말을 찍어 awk가 0으로 읽음 — 숫자로 시작하는 줄만 세야 함
+
 ## 검증자 활동 (auth.log에 남는 기록)
 
 탐지 결과와 섞이지 않도록 따로 적는다.
