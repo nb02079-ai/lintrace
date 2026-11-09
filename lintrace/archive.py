@@ -1,7 +1,7 @@
 """증거 아카이브 (--out DIR).
 
 DIR/lintrace-<호스트>-<시각>/ 아래에
-  report.txt, report.json   화면 리포트와 JSON 결과
+  report.txt, report.json, report.html   화면 리포트·JSON·HTML 결과
   evidence/                 탐지 근거 파일의 복사본 (원래 경로 구조 그대로, 읽기 전용 0400)
   manifest.json             파일마다 원래 경로·크기·권한·소유자·mtime·ctime·inode·SHA-256
   SHA256SUMS                아카이브 안 모든 파일의 해시
@@ -125,10 +125,12 @@ class Archive:
 
     # --- 마무리 ---
 
-    def finish(self, report_text, report_json):
+    def finish(self, report_text, report_json, report_html=None):
         write_text(os.path.join(self.dir, "report.txt"), report_text + "\n")
         write_text(os.path.join(self.dir, "report.json"),
                    json.dumps(report_json, ensure_ascii=False, indent=2) + "\n")
+        if report_html is not None:
+            write_text(os.path.join(self.dir, "report.html"), report_html)
         manifest = {"schema": 1, "archive": self.name, "created": iso(self.ctx.now),
                     "file_limit": FILE_LIMIT, "total_limit": TOTAL_LIMIT,
                     "copied": sum(1 for e in self.entries if e["copied"]), "files": self.entries}
@@ -171,7 +173,7 @@ def write_text(path, text):
         f.write(text)
 
 
-def write(out_dir, ctx, host, started_ts, findings, report_text, report_json):
+def write(out_dir, ctx, host, started_ts, findings, report_text, report_json, report_html=None):
     """아카이브를 만들고 (폴더 경로, tar.gz 경로, tar.gz SHA-256, 복사한 파일 수, 근거 경로 수)를 돌려준다."""
     a = Archive(out_dir, ctx, host, started_ts)
     a.create()
@@ -179,5 +181,5 @@ def write(out_dir, ctx, host, started_ts, findings, report_text, report_json):
         a.add_evidence(src)
     report_json = dict(report_json)
     report_json["archive"] = {"name": a.name, "evidence_files": sum(1 for e in a.entries if e["copied"])}
-    tar_path, digest = a.finish(report_text, report_json)
+    tar_path, digest = a.finish(report_text, report_json, report_html)
     return a.dir, tar_path, digest, sum(1 for e in a.entries if e["copied"]), len(a.entries)

@@ -122,7 +122,7 @@ class TestArchive(FakeRootTest):
 
         with open(os.path.join(d, "SHA256SUMS"), encoding="utf-8") as f:
             sums = dict(reversed(line.rstrip("\n").split("  ", 1)) for line in f)
-        self.assertEqual(sorted(sums), ["evidence/etc/passwd", "manifest.json", "report.json", "report.txt"])
+        self.assertEqual(sorted(sums), ["evidence/etc/passwd", "manifest.json", "report.html", "report.json", "report.txt"])
         for rel, h in sums.items():
             with open(os.path.join(d, rel), "rb") as f:
                 self.assertEqual(sha(f.read()), h, rel)

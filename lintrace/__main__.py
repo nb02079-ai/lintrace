@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -7,7 +8,7 @@ from . import __version__
 from .checks import ALL_CHECKS
 from .checks.base import Context, Unavailable
 from . import archive
-from .report import json_report, text
+from .report import html, json_report, text
 
 NOTICE = "본인 소유이거나 점검 권한을 받은 시스템에서만 실행하세요. 이 도구는 시스템을 수정하지 않습니다."
 
@@ -24,6 +25,7 @@ def main(argv=None):
     p.add_argument("--root", default="/", help="점검할 파일시스템 루트 (테스트용)")
     p.add_argument("--json", metavar="FILE", help="JSON 결과를 파일로 저장 ('-'면 텍스트 대신 화면에 JSON 출력)")
     p.add_argument("--out", metavar="DIR", help="증거 아카이브를 만들 폴더 (탐지 근거 파일 복사본, 해시 목록, tar.gz)")
+    p.add_argument("--html", metavar="FILE", help="HTML 리포트를 파일로 저장 (단일 파일, 외부 자원 없음)")
     p.add_argument("--full", action="store_true",
                    help="패키지 무결성(FS-04)을 핵심 경로가 아니라 모든 패키지 파일로 검사 (느림)")
     p.add_argument("--version", action="version", version=__version__)
@@ -48,6 +50,7 @@ def main(argv=None):
     report_text = text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings)
     report = json_report.build(ctx, ALL_CHECKS, findings, unavailable, scopes, warnings, started)
     report_json = json.dumps(report, ensure_ascii=False, indent=2)
+    report_html = html.render(report)
 
     if args.json == "-":
         print(report_json)
@@ -58,10 +61,17 @@ def main(argv=None):
                 f.write(report_json + "\n")
             print("JSON 결과: {}".format(args.json), file=sys.stderr)
 
+    if args.html:
+        with open(args.html, "w", encoding="utf-8") as f:
+            f.write(report_html)
+        print("HTML 리포트: {}".format(args.html), file=sys.stderr)
+        print("HTML 리포트 SHA-256: {}".format(hashlib.sha256(report_html.encode("utf-8")).hexdigest()),
+              file=sys.stderr)
+
     if args.out:
         try:
             folder, tar_path, digest, copied, sources = archive.write(
-                args.out, ctx, report["run"]["host"], ctx.now, findings, report_text, report)
+                args.out, ctx, report["run"]["host"], ctx.now, findings, report_text, report, report_html)
         except OSError as e:
             print("증거 아카이브를 만들지 못함: {}".format(e), file=sys.stderr)
             return 1
