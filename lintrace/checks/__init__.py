@@ -23,6 +23,12 @@ from .fs_07 import Fs07
 from .fs_08 import Fs08
 from .fs_09 import Fs09
 from .log_01 import Log01
+from .log_02 import Log02
+from .log_03 import Log03
+from .log_04 import Log04
+from .log_05 import Log05
+from .log_06 import Log06
+from .log_07 import Log07
 from .per_01 import Per01
 from .per_02 import Per02
 from .per_03 import Per03
@@ -49,5 +55,5 @@ from .net_05 import Net05
 from .net_06 import Net06
 
 ALL_CHECKS = [Acc01, Acc02, Acc03, Acc04, Acc05, Acc06, Acc07, Acc08, Acc09, Acc10, Acc11, Per01, Per02, Per03, Per04, Per05, Per06, Per07,
-              Per08, Per09, Prc01, Prc02, Prc03, Prc04, Prc05, Prc06, Prc07, Prc08, Prc09, Fs01, Fs02, Fs03, Fs04, Fs05, Fs06, Fs07, Fs08, Fs09, Cmd01, Cmd02, Cmd03, Log01,
+              Per08, Per09, Prc01, Prc02, Prc03, Prc04, Prc05, Prc06, Prc07, Prc08, Prc09, Fs01, Fs02, Fs03, Fs04, Fs05, Fs06, Fs07, Fs08, Fs09, Cmd01, Cmd02, Cmd03, Log01, Log02, Log03, Log04, Log05, Log06, Log07,
               Net01, Net02, Net03, Net04, Net05, Net06]

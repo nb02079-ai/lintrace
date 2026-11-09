@@ -92,7 +92,11 @@ class AuthLog:
     def scope(self):
         if not self.available:
             return "인증 로그 없음 (journal은 2-E에서)"
-        return "인증 로그 파일 {}개·{:,}줄".format(len(self.files), self.lines)
+        extra = getattr(self, "journal_added", 0)
+        if not self.files:
+            return "인증 로그 파일 없음, journal sshd 기록 {:,}건".format(extra)
+        return "인증 로그 파일 {}개·{:,}줄{}".format(
+            len(self.files), self.lines, ", journal 보충 {:,}건".format(extra) if extra else "")
 
 
 def log_files(ctx):
@@ -143,6 +147,30 @@ def auth_log(ctx):
             e = parse_line(line, ctx.now, path, no)
             if e:
                 entries.append(e)
-    log = AuthLog(entries, files, lines, bool(files))
+    from_journal = _journal_sshd(ctx, entries)
+    entries += from_journal
+    entries.sort(key=lambda e: e.ts)
+    log = AuthLog(entries, files, lines, bool(files) or bool(from_journal))
+    log.journal_added = len(from_journal)
     ctx._auth_log = log
     return log
+
+
+def _journal_sshd(ctx, file_entries):
+    """auth.log에 없는 sshd 기록을 journal에서 가져온다 (인증 로그가 없거나 비어 있을 때 보충).
+
+    같은 사건이 auth.log와 journal 양쪽에 있을 수 있어, (초 단위 시각, 메시지)로 중복을 뺀다.
+    """
+    from .journal import journal
+    j = journal(ctx)
+    if not j.available:
+        return []
+    have = {(int(e.ts), e.msg) for e in file_entries}
+    out = []
+    for r in j.of_prog(SSHD):
+        key = (int(r.realtime), r.msg)
+        if key in have:
+            continue
+        have.add(key)
+        out.append(Entry(r.realtime, "", r.prog, None, r.msg, "journal", 0, r.msg))
+    return out

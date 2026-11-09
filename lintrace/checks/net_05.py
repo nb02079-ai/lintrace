@@ -47,7 +47,7 @@ def odd_iptables(lines, source):
             continue
         for rx, what in IPT_ODD:
             if rx.search(m.group(2)):
-                out.append((what, Evidence(source, "{}행: {}".format(no, line.strip()[:200]))))
+                out.append((what, "ipt", Evidence(source, "{}행: {}".format(no, line.strip()[:200]))))
     return out
 
 
@@ -67,7 +67,7 @@ def odd_nft(lines, source):
             continue
         for rx, what in NFT_ODD:
             if rx.search(s):
-                out.append((what, Evidence(source, "{}행 (table {}, chain {}): {}".format(no, table, chain, s[:200]))))
+                out.append((what, "nft", Evidence(source, "{}행 (table {}, chain {}): {}".format(no, table, chain, s[:200]))))
     return out
 
 
@@ -103,15 +103,19 @@ class Net05(Check):
             hits += odd_nft(lines, path) if path.endswith("nftables.conf") else odd_iptables(lines, path)
         findings = []
         if hits:
-            kinds = []
-            for what, _ in hits:
+            kinds, backends = [], set()
+            for what, backend, _ in hits:
                 if what not in kinds:
                     kinds.append(what)
+                backends.add(backend)
+            both = len(backends) > 1  # iptables-nft 시스템은 같은 규칙이 iptables-save·nft 양쪽에 나온다
             findings.append(self.finding(
-                reason="방화벽에 정상 운영에서 드문 규칙 {}개: {}".format(len(hits), ", ".join(kinds)),
+                reason="방화벽에 정상 운영에서 드문 규칙이 있다: {}{}".format(
+                    ", ".join(kinds),
+                    " (iptables·nft 출력에 같은 규칙이 함께 나온 것으로 보임)" if both else ""),
                 next_steps="규칙의 출발지·포트와 넣은 사람을 확인한다. 모르는 규칙이면 보존한 뒤('iptables-save > 파일') 지우고, "
                            "저장된 규칙 파일에도 있으면 함께 지운다.",
-                evidence=[e for _, e in hits[:15]]))
+                evidence=[e for _, _, e in hits[:15]]))
         self.scope = "규칙 출처 {}개 ({}){}".format(len(sources), ", ".join(sources) or "없음",
                                                 ", 실행 중 규칙 {}줄".format(rules) if rules else "")
         return findings

@@ -291,7 +291,7 @@ class TestNet(Base):
                       "nft list ruleset": "table ip t {\n chain c {\n  tcp dport 8080 dnat to 10.0.0.2:22\n }\n}\n"}
         c, f, _ = self.run_check(Live(), {"/etc/iptables/rules.v4": "-A INPUT -m string --string 'knock' --algo bm -j ACCEPT\n"})
         self.assertEqual(len(f), 1)
-        self.assertIn("규칙 3개", f[0].reason)
+        self.assertIn("REDIRECT", f[0].reason)
         for what in ("REDIRECT", "DNAT", "string 매치"):
             self.assertIn(what, f[0].reason)
 

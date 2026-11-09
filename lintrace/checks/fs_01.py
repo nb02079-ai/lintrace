@@ -28,7 +28,7 @@ def elf_kind(head):
         if e_type == 2:
             return "ELF 실행 파일"
         if e_type == 3:
-            return "ELF 실행 파일·공유 라이브러리(PIE·.so)"
+            return "ELF 파일(실행 파일 또는 공유 라이브러리 PIE·.so)"
     return "ELF 파일"
 
 
@@ -78,14 +78,14 @@ class Fs01(Check):
 
         items = []
         for path, st, kind in found:
-            cond = [("warning", "임시 폴더에 {}이 있다".format(kind))]
+            cond = [("warning", "임시 폴더에 {}이(가) 있다".format(kind))]
             if any(part.startswith(".") for part in path.split("/") if part):
                 cond.append(("critical", "숨김 경로에 있다"))
             if st.st_mode & (stat.S_ISUID | stat.S_ISGID):
                 cond.append(("critical", "SUID·SGID가 붙어 있다 (FS-02에서도 확인)"))
             p = running.get(path)
             if p is not None:
-                cond.append(("critical", "지금 실행 중이다 (PID {} '{}', PRC-01에서도 확인)".format(p.pid, p.name)))
+                cond.append(("critical", "지금 실행 중이다 (PID {} '{}', PRC-03에서도 확인)".format(p.pid, p.name)))
             if path in preload:
                 cond.append(("critical", "/etc/ld.so.preload에 적혀 모든 프로그램에 끼워진다 (PER-05)"))
             ev = file_evidence(ctx, path, "unpackaged", None)[1:]

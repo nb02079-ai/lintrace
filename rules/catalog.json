@@ -407,29 +407,29 @@
   {
     "id": "LOG-02",
     "area": "LOG",
-    "name": "wtmp·btmp·lastlog 삭제 또는 불일치",
+    "name": "wtmp·btmp 로그인 기록 삭제·불일치",
     "severity": "critical",
     "attack": "T1070.002",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-03",
     "area": "LOG",
-    "name": "bash_history /dev/null 링크 또는 비어 있음",
+    "name": "명령 기록이 /dev/null이거나 비어 있음",
     "severity": "warning",
     "attack": "T1070.003",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-04",
     "area": "LOG",
-    "name": "rsyslog·journald 중단이나 설정 변경",
+    "name": "로깅 데몬 중단·설정 변경",
     "severity": "critical",
     "attack": "T1562.006",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-05",
@@ -438,16 +438,16 @@
     "severity": "warning",
     "attack": "T1070.002",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-06",
     "area": "LOG",
-    "name": "타임스탬프 조작 의심",
+    "name": "시각 조작 의심",
     "severity": "warning",
     "attack": "T1070.006",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "LOG-07",
@@ -456,7 +456,7 @@
     "severity": "warning",
     "attack": "T1068",
     "phase": 2,
-    "status": "planned"
+    "status": "implemented"
   },
   {
     "id": "CMD-01",

@@ -38,6 +38,7 @@ class Walk:
         self.suid = []      # [(경로, stat)]
         self.caps = []      # [(경로, stat, 속성 바이트)]
         self.hidden = []    # [(경로, stat)] — 이름이 '.'으로 시작하는 폴더
+        self.future = []    # [(경로, stat)] — 변경 시각이 미래인 파일 (LOG-06)
         self.denied = []    # 읽지 못한 폴더
 
 
@@ -48,7 +49,7 @@ def read_cap(full):
         return None  # 속성 없음(ENODATA)·지원 안 함
 
 
-def _walk(ctx, start, excluded, w):
+def _walk(ctx, start, excluded, w, future_after):
     stack = [start]
     while stack:
         logical = stack.pop()
@@ -75,6 +76,8 @@ def _walk(ctx, start, excluded, w):
                 w.files_seen += 1
                 if st.st_mode & (stat.S_ISUID | stat.S_ISGID):
                     w.suid.append((child, st))
+                if future_after and st.st_mtime > future_after:
+                    w.future.append((child, st))
                 cap = read_cap(entry.path)
                 if cap:
                     w.caps.append((child, st, cap))
@@ -91,10 +94,11 @@ def filewalk(ctx):
             excluded.add(unescape_mount(parts[1]))
     excluded.discard("/")
     w = Walk()
+    future_after = ctx.now + 86400     # 지금보다 하루 넘게 미래
     roots = ["/"] + [r for r in EXTRA_ROOTS if ctx.stat(r, follow=True) is not None]
     for start in roots:
-        _walk(ctx, start, excluded if start == "/" else set(), w)
-    for lst in (w.suid, w.caps, w.hidden):
+        _walk(ctx, start, excluded if start == "/" else set(), w, future_after)
+    for lst in (w.suid, w.caps, w.hidden, w.future):
         lst.sort(key=lambda x: x[0])  # 디렉터리를 읽는 순서와 관계없이 같은 결과
     ctx._filewalk = w
     return w
