@@ -11,12 +11,17 @@ def verdict(findings):
     return "정상"
 
 
-def render(findings, ran_ids, unavailable=None, scopes=None, warnings=None):
+def render(findings, ran_ids, unavailable=None, scopes=None, warnings=None, baseline=None):
     """findings: 탐지 목록, ran_ids: 실행한 항목 ID, unavailable: [(항목 ID, 이유)],
-    scopes: {항목 ID: 확인 범위}, warnings: 결과 전체의 신뢰도에 관한 경고 문장"""
+    scopes: {항목 ID: 확인 범위}, warnings: 결과 전체의 신뢰도에 관한 경고 문장,
+    baseline: 기준선 비교 사전(baseline.report_block) 또는 None"""
     unavailable = unavailable or []
     scopes = scopes or {}
-    head = "전체 판정: {}".format(verdict(findings))
+    v = verdict(findings)
+    bumped = baseline and (baseline["counts"]["added"] + baseline["counts"]["changed"]) > 0
+    if v == "정상" and bumped:
+        v = "위험"
+    head = "전체 판정: {}".format(v)
     if unavailable:
         # 점검하지 못한 항목이 있으면 '정상'이 확정이 아님을 판정 줄에서 바로 알린다
         head += " (단, 점검 불가 {}개 — 아래 '점검 불가' 항목은 확인되지 않음)".format(len(unavailable))
@@ -56,4 +61,28 @@ def render(findings, ran_ids, unavailable=None, scopes=None, warnings=None):
             out.append("  {} — {} 확인 ({})".format(i, scopes[i], status))
         else:
             out.append("  {} — {}".format(i, status))
+
+    if baseline is not None:
+        out.append("")
+        out += _baseline_text(baseline)
     return "\n".join(out)
+
+
+def _baseline_text(b):
+    src = b["source"]
+    c = b["counts"]
+    lines = ["기준선과 달라진 점: 새로 생김 {}건 · 바뀜 {}건 · 사라짐 {}건".format(
+        c["added"], c["changed"], c["removed"])]
+    lines.append("  기준선: {} / {} / {} / 생성 {}".format(
+        src.get("host") or "?", src.get("kernel") or "?", src.get("os") or "?", src.get("created") or "?"))
+    lines.append("  ⚠ 기준선이 이미 침해된 뒤 찍혔다면 이 비교는 소용없습니다.")
+    if b.get("mismatch"):
+        lines.append("  ⚠ 기준선과 현재 시스템이 다릅니다 ({}). 비교 결과를 믿기 어렵습니다.".format(b["mismatch"]))
+    if not b["changes"]:
+        lines.append("  달라진 점 없음.")
+        return lines
+    for ch in b["changes"]:
+        mark = {"added": "+", "removed": "-", "changed": "~"}[ch["kind"]]
+        lines.append("  {} [{}] {} — {}".format(mark, LABEL.get(ch["severity"], ch["severity"]),
+                                                ch["category_ko"], ch["detail"]))
+    return lines

@@ -29,6 +29,8 @@ sudo python3 -m lintrace --json result.json     # 같은 결과를 JSON으로도
 sudo python3 -m lintrace --out /mnt/usb/case1   # 증거 아카이브 (근거 파일 복사본, 해시 목록, tar.gz)
 sudo python3 -m lintrace --full                 # 패키지 무결성(FS-04)을 모든 패키지 파일로 (기본은 핵심 경로, 느림)
 sudo python3 -m lintrace --html report.html     # HTML 리포트 (단일 파일, 외부 자원 없음). --out과 함께 쓰면 아카이브에도 포함
+sudo python3 -m lintrace --save-baseline base.json   # 깨끗한 상태를 기준선으로 저장 (권한 0600)
+sudo python3 -m lintrace --baseline base.json    # 기준선과 비교해 '달라진 점'을 리포트에 추가 (--force-baseline로 머신 불일치 강행)
 python3 -m lintrace --list          # 점검 항목과 구현 상태
 python3 -m unittest discover -s tests   # 테스트
 ```

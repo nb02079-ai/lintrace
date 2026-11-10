@@ -7,7 +7,7 @@ import sys
 from . import __version__
 from .checks import ALL_CHECKS
 from .checks.base import Context, Unavailable
-from . import archive
+from . import archive, baseline as baseline_mod
 from .report import html, json_report, text
 
 NOTICE = "본인 소유이거나 점검 권한을 받은 시스템에서만 실행하세요. 이 도구는 시스템을 수정하지 않습니다."
@@ -28,6 +28,11 @@ def main(argv=None):
     p.add_argument("--html", metavar="FILE", help="HTML 리포트를 파일로 저장 (단일 파일, 외부 자원 없음)")
     p.add_argument("--full", action="store_true",
                    help="패키지 무결성(FS-04)을 핵심 경로가 아니라 모든 패키지 파일로 검사 (느림)")
+    p.add_argument("--save-baseline", metavar="FILE",
+                   help="지금 상태를 기준선으로 저장 (판정 안 함, 권한 0600)")
+    p.add_argument("--baseline", metavar="FILE", help="저장해 둔 기준선과 비교해 달라진 점을 리포트에 추가")
+    p.add_argument("--force-baseline", action="store_true",
+                   help="기준선과 호스트·커널·OS가 달라도 비교를 강행")
     p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args(argv)
 
@@ -45,10 +50,44 @@ def main(argv=None):
 
     ctx = Context(args.root)
     ctx.full = args.full
+
+    if args.save_baseline:
+        snap = baseline_mod.snapshot(ctx)
+        text_blob = json.dumps(snap, ensure_ascii=False, indent=2) + "\n"
+        fd = os.open(args.save_baseline, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text_blob)
+        n = sum(len(v) if hasattr(v, "__len__") else 0 for v in snap["facts"].values())
+        print("기준선 저장: {} (사실 {}개, 권한 0600)".format(args.save_baseline, n), file=sys.stderr)
+        print("주의: 기준선에는 계정·경로 등이 들어 있습니다. 점검 대상 밖 안전한 곳에 보관하세요.", file=sys.stderr)
+        return 0
+
+    baseline_block = None
+    if args.baseline:
+        try:
+            with open(args.baseline, encoding="utf-8") as f:
+                base = json.load(f)
+        except (OSError, ValueError) as e:
+            print("기준선을 읽지 못함: {}".format(e), file=sys.stderr)
+            return 1
+        if base.get("schema") != baseline_mod.SCHEMA:
+            print("기준선 스키마가 맞지 않습니다 (이 도구 버전으로 다시 저장하세요).", file=sys.stderr)
+            return 1
+        mism = baseline_mod.mismatch(base, ctx)
+        if mism and not args.force_baseline:
+            print("기준선과 현재 시스템이 다릅니다 ({}). 다른 머신의 기준선으로 보입니다 — "
+                  "강행하려면 --force-baseline.".format(mism), file=sys.stderr)
+            return 1
+        cur = baseline_mod.snapshot(ctx)
+        changes = baseline_mod.compare(base, cur)
+        baseline_block = baseline_mod.report_block(base, changes, mism)
+
     started = json_report.now_iso()
     findings, unavailable, scopes, warnings = run_checks(ctx, ALL_CHECKS)
-    report_text = text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings)
-    report = json_report.build(ctx, ALL_CHECKS, findings, unavailable, scopes, warnings, started)
+    report_text = text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings,
+                              baseline=baseline_block)
+    report = json_report.build(ctx, ALL_CHECKS, findings, unavailable, scopes, warnings, started,
+                               baseline=baseline_block)
     report_json = json.dumps(report, ensure_ascii=False, indent=2)
     report_html = html.render(report)
 

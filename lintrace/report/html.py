@@ -122,6 +122,41 @@ def _finding_block(f):
              reason=esc(f.get("reason")), ev=ev_html, steps=esc(f.get("next_steps")))
 
 
+KIND_MARK = {"added": ("새로 생김", "warn", "＋"), "changed": ("내용 바뀜", "warn", "～"),
+             "removed": ("사라짐", "info", "－")}
+
+
+def _baseline_section(b):
+    src = b.get("source", {})
+    c = b.get("counts", {})
+    out = ['<h2>기준선과 달라진 점</h2>']
+    out.append('<div class="meta"><dl>'
+               '<dt>기준선 출처</dt><dd>{host} · {kernel} · {os}</dd>'
+               '<dt>기준선 생성</dt><dd>{created}</dd>'
+               '<dt>기준선 코드 SHA-256</dt><dd>{sha}</dd>'
+               '<dt>달라진 점</dt><dd>새로 생김 {a} · 바뀜 {ch} · 사라짐 {r}</dd></dl></div>'.format(
+                   host=esc(src.get("host") or "?"), kernel=esc(src.get("kernel") or "?"),
+                   os=esc(src.get("os") or "?"), created=esc(src.get("created") or "?"),
+                   sha=esc(src.get("code_sha256") or "?"),
+                   a=c.get("added", 0), ch=c.get("changed", 0), r=c.get("removed", 0)))
+    out.append('<div class="warnbox">⚠ 기준선이 이미 침해된 뒤 찍혔다면 이 비교는 소용없습니다.</div>')
+    if b.get("mismatch"):
+        out.append('<div class="warnbox">⚠ 기준선과 현재 시스템이 다릅니다 ({}). 비교 결과를 믿기 어렵습니다.</div>'
+                   .format(esc(b["mismatch"])))
+    changes = b.get("changes", [])
+    if not changes:
+        out.append('<p class="notice">달라진 점이 없습니다.</p>')
+        return "".join(out)
+    out.append('<table><tr><th>구분</th><th>범주</th><th>내용</th></tr>')
+    for ch in changes:
+        label, cls, mark = KIND_MARK.get(ch.get("kind"), ("?", "info", "·"))
+        out.append('<tr><td class="st-{cls2}">{mark} {label}</td><td>{cat}</td><td class="det">{detail}</td></tr>'
+                   .format(cls2=("detected" if cls == "warn" else "clean"), mark=mark, label=esc(label),
+                           cat=esc(ch.get("category_ko")), detail=esc(ch.get("detail"))))
+    out.append("</table>")
+    return "".join(out)
+
+
 def render(report):
     """report: json_report.build()가 돌려준 사전."""
     # 모든 항목의 탐지를 평평하게 펴고 (심각→위험→참고, 같은 등급은 항목 ID 순) 항목 정보(id·제목·attack)를 붙인다
@@ -170,6 +205,9 @@ def render(report):
         parts.extend(_finding_block(f) for f in flat)
     else:
         parts.append('<p class="notice">탐지된 흔적이 없습니다.</p>')
+
+    if report.get("baseline") is not None:
+        parts.append(_baseline_section(report["baseline"]))
 
     parts.append("<h2>점검 범위 (전체 {}개 항목)</h2>".format(len(report.get("checks", []))))
     parts.append("<table><tr><th>항목</th><th>제목</th><th>결과</th><th>확인 범위</th></tr>")

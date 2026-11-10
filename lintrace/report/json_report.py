@@ -54,8 +54,9 @@ def run_info(ctx, started):
     }
 
 
-def build(ctx, checks, findings, unavailable, scopes, warnings, started):
-    """checks: 실행한 항목 클래스 목록. 나머지는 __main__.run_checks()의 결과."""
+def build(ctx, checks, findings, unavailable, scopes, warnings, started, baseline=None):
+    """checks: 실행한 항목 클래스 목록. 나머지는 __main__.run_checks()의 결과.
+    baseline: 기준선 비교 사전(baseline.report_block) 또는 None."""
     skipped = dict(unavailable)
     by_check = {}
     for f in findings:
@@ -76,11 +77,15 @@ def build(ctx, checks, findings, unavailable, scopes, warnings, started):
             "findings": [finding_dict(f) for f in mine],
             "error": skipped.get(cls.id),
         })
-    return {
+    v = VERDICT[verdict(findings)]
+    if baseline is not None and v == "clean" and \
+            (baseline["counts"]["added"] + baseline["counts"]["changed"]) > 0:
+        v = "warning"   # 기준선에 새로 생기거나 바뀐 것이 있으면 정상이 아니다
+    report = {
         "schema": SCHEMA,
         "tool": {"name": "lintrace", "version": __version__, "code_sha256": code_sha256()},
         "run": run_info(ctx, started),
-        "verdict": VERDICT[verdict(findings)],
+        "verdict": v,
         "incomplete": bool(unavailable),
         "counts": {"checks": len(checks), "findings": len(findings), "unavailable": len(unavailable),
                    "critical": sum(1 for f in findings if f.severity == "critical"),
@@ -89,6 +94,9 @@ def build(ctx, checks, findings, unavailable, scopes, warnings, started):
         "report_warnings": list(warnings or []),
         "checks": items,
     }
+    if baseline is not None:
+        report["baseline"] = baseline
+    return report
 
 
 def finding_dict(f):
