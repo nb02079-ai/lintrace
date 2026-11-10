@@ -69,6 +69,13 @@ th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);verti
 th{color:var(--muted);font-weight:600} tr:last-child td{border-bottom:none}
 td.st-detected{color:var(--crit);font-weight:600} td.st-unavailable{color:var(--warn)} td.st-clean{color:var(--muted)}
 .foot{color:var(--muted);font-size:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:12px}
+.timeline{border-left:2px solid var(--line);margin:8px 0 8px 6px;padding-left:14px}
+.tl-group{margin:0 0 14px}
+.tl-head{font-size:12.5px;color:var(--muted);font-weight:600;margin:10px 0 6px}
+.tl-row{position:relative;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--line);border-radius:6px;padding:7px 10px;margin:5px 0;font-size:13px}
+.tl-row.crit{border-left-color:var(--crit)} .tl-row.warn{border-left-color:var(--warn)} .tl-row.info{border-left-color:var(--info)}
+.tl-row .tl-time{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--muted);font-size:12px;margin-right:6px}
+.tl-row .det{color:var(--muted);font-size:12px;margin-top:3px;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,Consolas,monospace}
 """
 
 
@@ -157,6 +164,36 @@ def _baseline_section(b):
     return "".join(out)
 
 
+TL_CHIP = {"critical": "crit", "warning": "warn", "info": "info"}
+TL_LABEL = {"critical": "심각", "warning": "위험", "info": "참고"}
+
+
+def _timeline_section(t):
+    c = t.get("counts", {})
+    out = ['<h2>사건 타임라인 (사건 {}개 · 활동 구간 {}개)</h2>'.format(c.get("events", 0), c.get("groups", 0))]
+    out.append('<div class="warnbox">⚠ {}</div>'.format(esc(t.get("warning"))))
+    out.append('<div class="timeline">')
+    for i, g in enumerate(t.get("groups", []), start=1):
+        hd = "구간 {} · {} ~ {} ({})".format(i, esc(g["start_str"]), esc(g["end_str"]), esc(g["span_str"]))
+        if g.get("future"):
+            hd += ' <span class="chip warn">⚠ 미래 시각(조작 의심)</span>'
+        out.append('<div class="tl-group"><div class="tl-head">{}</div>'.format(hd))
+        for e in g.get("events", []):
+            cls = TL_CHIP.get(e.get("severity"), "info")
+            fut = ' <span class="chip warn">⚠ 미래</span>' if e.get("future") else ""
+            out.append('<div class="tl-row {cls}"><span class="tl-time">{t}</span>'
+                       '<span class="chip {cls}">{lab}</span> <span class="cid">{cid}</span> {title}'
+                       '<div class="det">{detail}</div>{fut}</div>'.format(
+                           cls=cls, t=esc(e["time_str"]), lab=esc(TL_LABEL.get(e.get("severity"), "?")),
+                           cid=esc(e.get("check_id")), title=esc(e.get("title")), detail=esc(e.get("detail")), fut=fut))
+        out.append('</div>')
+    out.append('</div>')
+    if t.get("unknown"):
+        names = ", ".join("{} {}".format(esc(u["check_id"]), esc(u["title"])) for u in t["unknown"])
+        out.append('<p class="notice">시각 미상: {}</p>'.format(names))
+    return "".join(out)
+
+
 def render(report):
     """report: json_report.build()가 돌려준 사전."""
     # 모든 항목의 탐지를 평평하게 펴고 (심각→위험→참고, 같은 등급은 항목 ID 순) 항목 정보(id·제목·attack)를 붙인다
@@ -205,6 +242,9 @@ def render(report):
         parts.extend(_finding_block(f) for f in flat)
     else:
         parts.append('<p class="notice">탐지된 흔적이 없습니다.</p>')
+
+    if report.get("timeline") is not None:
+        parts.append(_timeline_section(report["timeline"]))
 
     if report.get("baseline") is not None:
         parts.append(_baseline_section(report["baseline"]))

@@ -54,9 +54,10 @@ def run_info(ctx, started):
     }
 
 
-def build(ctx, checks, findings, unavailable, scopes, warnings, started, baseline=None):
+def build(ctx, checks, findings, unavailable, scopes, warnings, started, baseline=None, timeline=None):
     """checks: 실행한 항목 클래스 목록. 나머지는 __main__.run_checks()의 결과.
-    baseline: 기준선 비교 사전(baseline.report_block) 또는 None."""
+    baseline: 기준선 비교 사전(baseline.report_block) 또는 None.
+    timeline: 사건 타임라인 사전(correlate.build_block) 또는 None."""
     skipped = dict(unavailable)
     by_check = {}
     for f in findings:
@@ -96,6 +97,8 @@ def build(ctx, checks, findings, unavailable, scopes, warnings, started, baselin
     }
     if baseline is not None:
         report["baseline"] = baseline
+    if timeline is not None:
+        report["timeline"] = timeline
     return report
 
 

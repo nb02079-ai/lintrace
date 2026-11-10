@@ -7,7 +7,7 @@ import sys
 from . import __version__
 from .checks import ALL_CHECKS
 from .checks.base import Context, Unavailable
-from . import archive, baseline as baseline_mod
+from . import archive, baseline as baseline_mod, correlate
 from .report import html, json_report, text
 
 NOTICE = "본인 소유이거나 점검 권한을 받은 시스템에서만 실행하세요. 이 도구는 시스템을 수정하지 않습니다."
@@ -84,10 +84,16 @@ def main(argv=None):
 
     started = json_report.now_iso()
     findings, unavailable, scopes, warnings = run_checks(ctx, ALL_CHECKS)
+    # 기준선에서 바뀐·새로 생긴 파일의 ctime도 타임라인에 넣는다
+    extra_files = None
+    if baseline_block is not None:
+        extra_files = [(ch["key"], "기준선 " + ch["kind_ko"]) for ch in baseline_block.get("changes", [])
+                       if ch["kind"] in ("added", "changed") and ch["key"].startswith("/")]
+    timeline_block = correlate.build_block(ctx, findings, extra_files)
     report_text = text.render(findings, [c.id for c in ALL_CHECKS], unavailable, scopes, warnings,
-                              baseline=baseline_block)
+                              baseline=baseline_block, timeline=timeline_block)
     report = json_report.build(ctx, ALL_CHECKS, findings, unavailable, scopes, warnings, started,
-                               baseline=baseline_block)
+                               baseline=baseline_block, timeline=timeline_block)
     report_json = json.dumps(report, ensure_ascii=False, indent=2)
     report_html = html.render(report)
 

@@ -31,6 +31,7 @@ sudo python3 -m lintrace --full                 # 패키지 무결성(FS-04)을 
 sudo python3 -m lintrace --html report.html     # HTML 리포트 (단일 파일, 외부 자원 없음). --out과 함께 쓰면 아카이브에도 포함
 sudo python3 -m lintrace --save-baseline base.json   # 깨끗한 상태를 기준선으로 저장 (권한 0600)
 sudo python3 -m lintrace --baseline base.json    # 기준선과 비교해 '달라진 점'을 리포트에 추가 (--force-baseline로 머신 불일치 강행)
+# 리포트에는 탐지 흔적을 시간 순으로 엮은 '사건 타임라인' 구역이 자동으로 들어감 (ctime·로그 시각 기반, 순서는 단서일 뿐)
 python3 -m lintrace --list          # 점검 항목과 구현 상태
 python3 -m unittest discover -s tests   # 테스트
 ```

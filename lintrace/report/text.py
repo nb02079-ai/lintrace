@@ -11,10 +11,11 @@ def verdict(findings):
     return "정상"
 
 
-def render(findings, ran_ids, unavailable=None, scopes=None, warnings=None, baseline=None):
+def render(findings, ran_ids, unavailable=None, scopes=None, warnings=None, baseline=None, timeline=None):
     """findings: 탐지 목록, ran_ids: 실행한 항목 ID, unavailable: [(항목 ID, 이유)],
     scopes: {항목 ID: 확인 범위}, warnings: 결과 전체의 신뢰도에 관한 경고 문장,
-    baseline: 기준선 비교 사전(baseline.report_block) 또는 None"""
+    baseline: 기준선 비교 사전(baseline.report_block) 또는 None,
+    timeline: 사건 타임라인 사전(correlate.build_block) 또는 None"""
     unavailable = unavailable or []
     scopes = scopes or {}
     v = verdict(findings)
@@ -62,10 +63,31 @@ def render(findings, ran_ids, unavailable=None, scopes=None, warnings=None, base
         else:
             out.append("  {} — {}".format(i, status))
 
+    if timeline is not None:
+        out.append("")
+        out += _timeline_text(timeline)
     if baseline is not None:
         out.append("")
         out += _baseline_text(baseline)
     return "\n".join(out)
+
+
+def _timeline_text(t):
+    lines = ["사건 타임라인 (사건 {}개, 활동 구간 {}개):".format(t["counts"]["events"], t["counts"]["groups"])]
+    lines.append("  ⚠ {}".format(t["warning"]))
+    for i, g in enumerate(t["groups"], start=1):
+        head = "  [구간 {}] {} ~ {}".format(i, g["start_str"], g["end_str"])
+        if g["future"]:
+            head += "  ⚠ 미래 시각 포함(조작 의심)"
+        lines.append(head)
+        for e in g["events"]:
+            mark = "⚠" if e["future"] else " "
+            lines.append("    {} {} [{}] {} {} — {}".format(
+                mark, e["time_str"], LABEL.get(e["severity"], e["severity"]),
+                e["check_id"], e["title"], e["detail"]))
+    if t["unknown"]:
+        lines.append("  시각 미상: " + ", ".join("{} {}".format(u["check_id"], u["title"]) for u in t["unknown"]))
+    return lines
 
 
 def _baseline_text(b):
