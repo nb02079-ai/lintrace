@@ -179,17 +179,12 @@ def snapshot(ctx, with_packages=True):
                 if dig:
                     unpackaged[path] = dig
 
-    # ⑤ 지속성 파일 + 커널 모듈
+    # ⑤ 지속성 파일
     persistence = _hashed_files(ctx, _dir_files(ctx, UNIT_DIRS))
     for p in ["/etc/rc.local"]:
         d = _sha256_path(ctx, p)
         if d:
             persistence.setdefault(p, d)
-    modules = set()
-    for line in ctx.read_lines("/proc/modules", missing_ok=True):
-        f = line.split()
-        if f:
-            modules.add(f[0])
 
     # ⑥ 보안 설정 파일
     config_paths = list(CONFIG_FILES) + _dir_files(ctx, CONFIG_DIRS) + list(AUTH_KEYS)
@@ -197,8 +192,15 @@ def snapshot(ctx, with_packages=True):
         config_paths.append(home.rstrip("/") + "/.ssh/authorized_keys")
     config = _hashed_files(ctx, config_paths)
 
-    # ⑦ 방화벽
+    # ⑦ 방화벽 — nft·iptables-save 조회가 nf_tables 모듈을 자동으로 올리므로 모듈 목록보다 먼저 한다
     firewall = _firewall_hash(ctx)
+
+    # 커널 모듈 — 방화벽 조회 뒤에 읽는다 (안 그러면 nft가 올린 nf_tables가 다음 실행 때 '새로 생김'으로 뜬다)
+    modules = set()
+    for line in ctx.read_lines("/proc/modules", missing_ok=True):
+        f = line.split()
+        if f:
+            modules.add(f[0])
 
     # ⑧ 패키지 목록 (옵션)
     pkgs = _package_list(ctx) if with_packages else None
