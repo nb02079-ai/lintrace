@@ -358,3 +358,12 @@ LOG-05(로그 공백)·LOG-07(커널 oops)은 재현에 몇 시간·커널 취�
 - 결정성: `b51f32c` 전(`1040744`)에는 즉시 비교에서 `커널 모듈 — nf_tables 새로 생김` 1건 — 방화벽 조회(nft·iptables-save)가 nf_tables를 자동 로드하는데 모듈 목록을 그 전에 읽어 save엔 없고 compare엔 있었음. 모듈 읽기를 방화벽 조회 뒤로 옮겨(`b51f32c`) **즉시 비교 0건** 확인
 - 양성: `useradd -M evil` + `nc -lkp 4444` + `echo >> sshd_config` 뒤 비교 → 새로 생김 2(리스닝 tcp/4444 nc.openbsd, 계정 evil uid=1001 pw=locked), 바뀜 3(/etc/passwd·/etc/group — useradd가 함께 수정, /etc/ssh/sshd_config). 심은 것만 정확히, 오탐·누락 0. 이후 `web-baseline` 복원
 - 메모: 방화벽 조회가 nf_tables 모듈을 자동 로드함 — "시스템 수정 안 함" 주장과 상충 가능(NET-05 포함). 기준선 결정성은 해결, 모듈 자동 로드 자체는 추후 과제
+
+## 13차 적용 — 공격→탐지 포트폴리오 데모 (`f29ab62`, 2026-11-10)
+
+`web-baseline`에 공격 전 `--save-baseline clean.json` 저장 → 11단계 침해 사슬 심음(웹쉘·웹공격요청·숨김폴더 nc·리버스셸·SUID 셸복사·setcap·cron 리버스셸·UID0 계정·authorized_keys·히스토리 /dev/null·웹쉘 mtime 백데이팅·access.log 삭제) → `--baseline --html --out --json` 한 번에.
+- 판정 심각 / 탐지 19건(심각 8·위험 7·참고 4) / 점검 불가 0. 심은 공격 전수 탐지, 빠짐 없음
+- FS-06·07, CMD-03×3, FS-01·08·PRC-03·NET-01, PRC-08, FS-02, FS-03, PER-01, ACC-01, ACC-07, LOG-03, LOG-01(nginx held-deleted)
+- 기준선 7건(새로생김 4: 포트4444·sysbackup UID0·SUID·cron / 바뀜 3: passwd·group·authorized_keys). 타임라인 17사건 1구간으로 01:29:51~01:31:01 재구성
+- 돋보인 점: (1) 웹쉘 mtime 2024 백데이팅을 ctime 지금과 병기해 발각 (2) 히스토리 /dev/null 삭제로 CMD-02 증거는 사라졌으나 그 행위를 LOG-03가 포착 (3) 루프백 리버스셸은 NET-02 아닌 PRC-08이 포착 (4) 삭제된 access.log를 아카이브가 /proc fd로 원본 복구
+- 포트폴리오 문서: 프로젝트 `claude/LinTrace 공격-탐지 데모.md`. 이후 `web-baseline` 복원
