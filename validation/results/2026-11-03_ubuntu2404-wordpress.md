@@ -350,3 +350,11 @@ LOG-05(로그 공백)·LOG-07(커널 oops)은 재현에 몇 시간·커널 취�
 되돌리기: `systemctl unmask rsyslog`, wtmp.bak 복구, 심볼릭 링크·미래 파일 삭제 — 또는 스냅샷 복원.
 
 2-E 6개 항목 확인 (24.04 양성 + lin.security 기준선 대기). **2단계 54/54 완료.**
+
+## 12차 적용 — 3단계 2차 기준선 비교 (`b51f32c`, 2026-11-10)
+
+- 사고 재발: 24.04 도구 파일 NUL 손상(`SyntaxError: source code string cannot contain null bytes`) → 복사 절차 6번(NUL 검사) 하기 전에 실행한 탓. 재추출 후 정상
+- `--save-baseline /tmp/base.json`: 사실 2,154개, 0600 저장
+- 결정성: `b51f32c` 전(`1040744`)에는 즉시 비교에서 `커널 모듈 — nf_tables 새로 생김` 1건 — 방화벽 조회(nft·iptables-save)가 nf_tables를 자동 로드하는데 모듈 목록을 그 전에 읽어 save엔 없고 compare엔 있었음. 모듈 읽기를 방화벽 조회 뒤로 옮겨(`b51f32c`) **즉시 비교 0건** 확인
+- 양성: `useradd -M evil` + `nc -lkp 4444` + `echo >> sshd_config` 뒤 비교 → 새로 생김 2(리스닝 tcp/4444 nc.openbsd, 계정 evil uid=1001 pw=locked), 바뀜 3(/etc/passwd·/etc/group — useradd가 함께 수정, /etc/ssh/sshd_config). 심은 것만 정확히, 오탐·누락 0. 이후 `web-baseline` 복원
+- 메모: 방화벽 조회가 nf_tables 모듈을 자동 로드함 — "시스템 수정 안 함" 주장과 상충 가능(NET-05 포함). 기준선 결정성은 해결, 모듈 자동 로드 자체는 추후 과제
