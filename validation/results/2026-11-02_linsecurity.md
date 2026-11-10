@@ -541,3 +541,15 @@ lin.security 권한 상승 경로: 1단계 6개 + 2-A에서 찾은 peter docker 
 - 커널 4.15.0-23, tainted 9216 = C(staging)+E(서명 없음) — /sys/module/vboxvideo/taint `CE`, 커널 트리 안 모듈. /proc/modules 88개 = /sys/module initstate 88개. 트리 밖 모듈·modprobe `install` 줄 없음
 - PAM: sshd·login 모두 pam_motd 사용 (로그인 때 update-motd.d 실행)
 - 정답 명령 주의: /lib→/usr/lib로 맞춘 경로가 출력돼 debug.service가 /usr/lib에 있는 것처럼 보였음 (usrmerge 없는 시스템)
+
+## 24차 적용 — 3단계 3차 시간 상관분석 (`f29ab62`, 2026-11-10)
+
+`original`에서 사건 타임라인 18개·활동 구간 7개. **1단계 정답 ctime과 정확히 일치** — 정답을 아는 확인 통과.
+- 구간 2 (19:54~19:57 심기 세션): taskset SUID ctime 19:54:11(mtime 2018-05-16 그대로 — chmod만, FS-02 원칙 가시화) → backup cron ctime 19:54:56·mtime 19:54:45(작성) → crontab 19:55:13 → debug.service ctime 19:57:00·mtime 19:56:54
+- 구간 3 (다음 날 08:02:47): xxd SUID — 1단계 관찰값과 동일
+- 구간 5 (08:37): /etc/profile unset HISTFILE 08:37:22 → 00-header 08:37:40 — 1단계 관찰값과 동일
+- 구간 6 (15:12): /etc/passwd·group — 계정 생성(ACC-01·02·04·05)
+- 구간 7 (19:50): sudoers·group — 권한 부여(ACC-06·05)
+- ctime 주·mtime 보조 표시가 "SUID는 mtime 그대로 ctime만 바뀜"을 그대로 드러냄. /proc·/sys 제외로 PRC류는 시각 미상
+- 시간 원칙 준수: 타임라인은 순서·표시만, 위험도는 각 항목 등급 그대로
+이후 `original` 복원. **3단계 3기능(HTML·기준선·타임라인) 모두 구현·검증 완료.**
